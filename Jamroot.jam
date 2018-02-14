@@ -1,0 +1,46 @@
+path-constant PROJECT_ROOT : . ;
+path-constant TOP : . ;
+path-constant BOOST_INCLUDE_BASE : /usr/local/include ;
+path-constant BOOST_LIB_BASE : /usr/local/lib ;
+
+using gcc : : : <cxxflags>-std=gnu++14 ;
+
+# <toolset>gcc:<cxxflags>-std=gnu++0x
+# <toolset>clang:<cxxflags>-std=c++11
+
+lib pthread
+   :
+   : <name>pthread <search>/lib
+   ;
+
+lib boost_chrono
+   :
+   : <name>boost_chrono <search>$(BOOST_LIB_BASE)
+   ;
+
+lib boost_thread
+   :
+   : <name>boost_thread <search>$(BOOST_LIB_BASE)
+   : : <library>boost_chrono <library>pthread
+   ;
+
+lib boost_regex
+   :
+   : <name>boost_regex <search>$(BOOST_LIB_BASE)
+   ;
+
+lib boost_system
+   :
+   : <name>boost_system <search>$(BOOST_LIB_BASE)
+   ;
+
+alias regex : boost_regex : <link>shared <runtime-link>shared ;
+alias system : boost_system :  ;
+alias thread : boost_thread :  ;
+
+exe example : example.cpp regex system ;
+exe chat_client : chat_client.cpp system thread ;
+exe chat_server : chat_server.cpp system thread ;
+exe asio_test : asio_test.cpp system thread ;
+exe time_test : time_test.cpp system boost_chrono ;
+
