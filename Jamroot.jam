@@ -41,7 +41,7 @@ alias thread : boost_thread :  ;
 exe example : example.cpp regex system ;
 exe chat_client : chat_client.cpp system thread ;
 exe chat_server : chat_server.cpp system thread ;
-exe asio_test : asio_test.cpp system thread ;
+exe asio_sample_timer : asio_sample_timer.cpp system thread ;
 exe time_test : time_test.cpp system boost_chrono ;
 exe info : info.cpp system thread ;
 
