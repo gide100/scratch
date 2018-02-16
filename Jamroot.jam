@@ -3,7 +3,7 @@ path-constant TOP : . ;
 path-constant BOOST_INCLUDE_BASE : /usr/local/include ;
 path-constant BOOST_LIB_BASE : /usr/local/lib ;
 
-using gcc : : : <cxxflags>-std=gnu++14 ;
+using gcc : : : <cxxflags>"-std=gnu++14 -pedantic -Wall -Wextra" ; # -Weffc++ 
 
 # <toolset>gcc:<cxxflags>-std=gnu++0x
 # <toolset>clang:<cxxflags>-std=c++11
@@ -45,6 +45,7 @@ exe asio_sample_timer : asio_sample_timer.cpp system thread ;
 exe asio_sample_timer1 : asio_sample_timer1.cpp system thread ;
 exe asio_sample_timer_with_thread : asio_sample_timer_with_thread.cpp system thread ;
 exe asio_sample_timer_with_2_thread : asio_sample_timer_with_2_thread.cpp system thread ;
+exe asio_sample_posting : asio_sample_posting.cpp system thread ;
 exe time_test : time_test.cpp system boost_chrono ;
 exe info : info.cpp system thread ;
 
