@@ -143,7 +143,7 @@ void chat_handler::read_packet() {
 
 
 void chat_handler::read_packet_done( boost::system::error_code const& error, std::size_t bytes_transferred ) {
-  if(error){ return; }
+  if (error) { return; }
 
   std::istream stream(&in_packet_);
   std::string packet_string;
