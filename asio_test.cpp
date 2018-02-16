@@ -12,7 +12,8 @@ int main() {
 
     boost::asio::deadline_timer timer(service, boost::posix_time::seconds(5));
 
-    // Non blocking call, Jonny
+    // Non blocking call, Jonny. When timeout finishes calls completion handler to print ' ...timer expired'
+    // Timer begins, waits 5 second, places handler on completion queue.
     timer.async_wait([](auto ... vn) {
                            std::cout << boost::chrono::system_clock::now()
                                      << " : timer expired.\n";
@@ -22,7 +23,8 @@ int main() {
     //std::cout << boost::chrono::time_fmt(boost::chrono::timezone::local) ;
     std::cout << boost::chrono::system_clock::now() << " : calling run\n";
 
-    service.run(); // Bulter to slushy shack, blocks wait for all services to complete
+    // Thread that services the completion handler. Butler to slushy shack, blocks wait for all services to complete
+    service.run(); 
 
     std::cout << boost::chrono::system_clock::now() << " : done\n";
 }
