@@ -46,6 +46,8 @@ exe asio_sample_timer1 : asio_sample_timer1.cpp system thread ;
 exe asio_sample_timer_with_thread : asio_sample_timer_with_thread.cpp system thread ;
 exe asio_sample_timer_with_2_thread : asio_sample_timer_with_2_thread.cpp system thread ;
 exe asio_sample_posting : asio_sample_posting.cpp system thread ;
+exe asio_sample_timer_with_2_thread_strand : asio_sample_timer_with_2_thread_strand.cpp system thread ;
+exe asio_sample_timer_with_3_thread_strand : asio_sample_timer_with_3_thread_strand.cpp system thread ;
 exe time_test : time_test.cpp system boost_chrono ;
 exe info : info.cpp system thread ;
 
