@@ -1,65 +1,101 @@
+#ifndef AN_SHUTDOWN_CPP
+#define AN_SHUTDOWN_CPP
+
 #include <atomic>
 #include <iostream>
 #include <boost/asio.hpp>
-#include <boost/thread.hpp>
+
+
+class DoWait {
+    public:
+        DoWait(boost::asio::deadline_timer* timer, std::atomic<int>* count) : timer_(timer), count_(count), wait_time_(1) {}
+        void operator()(const boost::system::error_code& ec) {
+            std::cerr << "[DoWait] iteration = " << *count_ << std::endl;
+            if (!ec && *count_ > 0) {
+                ++(*count_);
+                timer_->expires_at(timer_->expires_at() + wait_time_);
+                timer_->async_wait( DoWait(timer_, count_) );
+            } else {
+                // DO NOTHING, don't resubmit to queue.
+            }
+        }
+    private:
+        boost::asio::deadline_timer* timer_;
+        std::atomic<int>* count_;
+        boost::posix_time::seconds wait_time_;
+};
+
 
 class Shutdown {
-public:
-    Shutdown()
-        : is_signal_received_ (false), wait_time_(10),
-        signalService_(),
-        signals_(signalService_, SIGINT, SIGTERM, SIGQUIT) {
-        std::cout<<"constructor"<<std::endl;
-    }
-    ~Shutdown() {
-        signals_.cancel();
-        signalService_.stop();
-        signalThread_.join();
-    }
+    public:
+        Shutdown()
+            : not_signal_received_(1),
+            signalContext_(),
+            signals_(signalContext_, SIGINT, SIGTERM, SIGQUIT),
+            doWaitTimer_(signalContext_, boost::posix_time::seconds(1)) {
+            std::cout<<"constructor"<<std::endl;
+            signals_.add(SIGILL);
+            signals_.add(SIGHUP);
+        }
+        virtual ~Shutdown() {
+            std::cout<<"~dtor"<<std::endl;
+            signals_.cancel();
+            signalContext_.stop();
+            //signalThread_.join();
+        }
 
-    void init() {
-        std::cout<<"Init "<<std::endl;
-        signals_.async_wait(boost::bind(&Shutdown::handleStop, this, _1, _2));
-        signalThread_ = boost::thread(boost::bind(&boost::asio::io_service::run, &signalService_));
-        std::cout<<"Init Completed"<<std::endl;
-    }
+        void init() {
+            std::cout<<"Init "<<std::endl;
+            signals_.async_wait( [&] (const boost::system::error_code& ec, int s) { handleStop(ec, s); } );
+            doWaitTimer_.async_wait( DoWait(&doWaitTimer_, &not_signal_received_) );
+            signalThread_ = std::thread( [&]() { signalContext_.run(); } );
+            std::cout<<"Init Completed"<<std::endl;
+        }
 
-    bool isSignalReceived() const {
-        return is_signal_received_;
-    }
-    int waitTime() {
-	return wait_time_;	
-    }
+        bool isSignalReceived() const {
+            return not_signal_received_!=0;
+        }
+        void join() {
+            std::cout << "Join (wait)" << std::endl;
+            signalThread_.join();
+        }
+    private:
+        std::atomic<int> not_signal_received_; // Zero idicates signal received
+        std::atomic<int> wait_time_;
+        boost::asio::io_context signalContext_;
+        std::thread signalThread_;
+        boost::asio::signal_set signals_;
+        
+        boost::asio::deadline_timer doWaitTimer_;
 
-private:
-    std::atomic<bool> is_signal_received_;
-    std::atomic<int> wait_time_;
-    boost::asio::io_service signalService_;
-    boost::thread signalThread_;
-    boost::asio::signal_set signals_;
+        void handleStop(const boost::system::error_code& error, int signal_number) {
+            not_signal_received_ = 0;
+            myHandleStop(error, signal_number);
+        }
 
-    void handleStop(const boost::system::error_code& error, int signal_number) {
-        is_signal_received_ = true;
-        wait_time_ = 0;
-        myHandleStop(error, signal_number);
-    }
-
-    virtual void myHandleStop(const boost::system::error_code& error, int signal_number) = 0;
+        virtual void myHandleStop(const boost::system::error_code& error, int signal_number) = 0;
 };
 
 class MyShutdown: public Shutdown {
+public:
+    MyShutdown() : Shutdown() {}
+    virtual ~MyShutdown() { }
+    MyShutdown(const MyShutdown& shut) = delete;
+    MyShutdown& operator=(const MyShutdown& shut) = delete;
 private:
     void myHandleStop(const boost::system::error_code& error, int signal_number) {
         std::cout << "Executing Safe Shutdown signal=" << signal_number << std::endl;
-        exit(error ? 1 : 0);
     }
 };
 
 int main() {
     MyShutdown safeShutdown;
     safeShutdown.init();
-    while (!safeShutdown.isSignalReceived()) {
-        std::cout<<"Waiting ctl-c"<<std::endl;
-        sleep(safeShutdown.waitTime());
-    }
+    safeShutdown.join();
+    //while (!safeShutdown.isSignalReceived()) {
+    //    std::cout<<"Waiting ctl-c"<<std::endl;
+    //    sleep(safeShutdown.waitTime());
+    //}
 }
+
+#endif
