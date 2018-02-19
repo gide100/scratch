@@ -3,7 +3,7 @@ path-constant TOP : . ;
 path-constant BOOST_INCLUDE_BASE : /usr/local/include ;
 path-constant BOOST_LIB_BASE : /usr/local/lib ;
 
-using gcc : : : <cxxflags>"-std=gnu++14 -pedantic -Wall -Wextra" ; # -Weffc++ 
+using gcc : : : <cxxflags>"-std=gnu++14" ; # -Weffc++ -pedantic -Wall -Wextra
 
 # <toolset>gcc:<cxxflags>-std=gnu++0x
 # <toolset>clang:<cxxflags>-std=c++11
