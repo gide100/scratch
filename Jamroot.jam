@@ -51,4 +51,5 @@ exe asio_sample_timer_with_3_thread_strand : asio_sample_timer_with_3_thread_str
 exe myshutdown : shutdown.cpp system thread ;
 exe time_test : time_test.cpp system boost_chrono ;
 exe info : info.cpp system thread ;
+exe order : order.cpp system thread ;
 
