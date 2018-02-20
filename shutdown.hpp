@@ -29,13 +29,19 @@ class DoWait {
 class Shutdown {
     public:
         Shutdown()
-            : signal_not_received_(1),
-            signalContext_(),
-            signals_(signalContext_, SIGINT, SIGTERM, SIGQUIT),
-            doWaitTimer_(signalContext_, boost::posix_time::seconds(1)) {
+              : signal_not_received_(1),
+              signalContext_(),
+              signals_(signalContext_, SIGINT, SIGTERM, SIGQUIT),
+              doWaitTimer_(signalContext_, boost::posix_time::seconds(1)) {
             std::cout<<"constructor"<<std::endl;
             signals_.add(SIGILL);
             signals_.add(SIGHUP);
+            
+            // Setup timer and signals
+            signals_.async_wait( [&] (const boost::system::error_code& ec, int s) { handleStop(ec, s); } );
+            doWaitTimer_.async_wait( DoWait(&doWaitTimer_, &signal_not_received_) );
+            signalThread_ = std::thread( [&]() { signalContext_.run(); } );
+              
         }
         virtual ~Shutdown() {
             std::cout<<"~dtor"<<std::endl;
@@ -44,17 +50,10 @@ class Shutdown {
             //signalThread_.join();
         }
 
-        void init() {
-            std::cout<<"Init "<<std::endl;
-            signals_.async_wait( [&] (const boost::system::error_code& ec, int s) { handleStop(ec, s); } );
-            doWaitTimer_.async_wait( DoWait(&doWaitTimer_, &signal_not_received_) );
-            signalThread_ = std::thread( [&]() { signalContext_.run(); } );
-            std::cout<<"Init Completed"<<std::endl;
-        }
-
         bool isSignalReceived() const {
             return signal_not_received_!=0;
         }
+
         void join() {
             std::cout << "Join (wait)" << std::endl;
             signalThread_.join();
