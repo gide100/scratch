@@ -5,16 +5,25 @@
 #include <bitset>
 #include <boost/algorithm/string.hpp>
 
+const char DELIMITOR = ':';
+const char SEPERATOR = '=';
+
 std::string an::Order::to_string() const {
     std::stringstream ss;
-    ss << "id=" << order_id_ ;
+    ss << "id" << SEPERATOR << order_id_ << DELIMITOR  
+       << "origin" << SEPERATOR << origin_ << DELIMITOR
+       << "destination" << SEPERATOR << destination_ ;
     return ss.str();
 }
 
 an::Order::~Order() { }
 
-const char DELIMITOR = ':';
-const char SEPERATOR = '=';
+std::ostream& operator<<(std::ostream& os, const an::Order& o) {
+    return os << o.to_string() ;
+}
+
+
+
 
 std::string::const_iterator mySplit(std::pair<std::string,std::string>& res, 
                                     std::string::const_iterator myBegin, std::string::const_iterator myEnd) {
@@ -26,17 +35,16 @@ std::string::const_iterator mySplit(std::pair<std::string,std::string>& res,
          ss << "Bad token missing seperator [" << token << "]";
          throw an::OrderError(ss.str().c_str());
     }
-    std::string first(myBegin,myEq);
-    std::string second(++myEq,myDelim);
+    res.first.assign(myBegin,myEq);
+    res.second.assign(++myEq,myDelim);
 
     if (myDelim != myEnd) {
         ++myDelim;
     }
-    res.first = first; res.second=second;
     return myDelim;
 }
 
-enum InputField { None, Type, Id, Symbol, Direction, Shares, Price, Last }; 
+enum InputField { None, Type, Id, Origin, Destination, Symbol, Direction, Shares, Price, Last }; 
 typedef std::bitset<Last> FieldFlags;
 void checkFlags(FieldFlags expected, FieldFlags got) {
     if (expected != got) {
@@ -55,6 +63,8 @@ an::Order* an::Order::makeOrder(const std::string& input) {
     FieldFlags myPrevFlags;
     std::string myType;
     an::order_id_t myId = 0;
+    an::location_t myOrigin;
+    an::location_t myDestination;
     an::symbol_t mySymbol;
     an::direction_t myDirection = an::BUY;
     an::price_t myPrice = 0.0;
@@ -73,6 +83,16 @@ an::Order* an::Order::makeOrder(const std::string& input) {
         if (res.first == "id") {
             myId = std::stoull(res.second);
             myFlags.set(Id);
+	    used = true;
+        }
+        if (res.first == "origin") {
+            myOrigin = res.second;
+            myFlags.set(Origin);
+	    used = true;
+        }
+        if (res.first == "destination") {
+            myDestination = res.second;
+            myFlags.set(Destination);
 	    used = true;
         }
         if (res.first == "symbol") {
@@ -119,30 +139,29 @@ an::Order* an::Order::makeOrder(const std::string& input) {
     }
 
     Order* myOrder = nullptr;
+    FieldFlags f; f.set(Type); f.set(Id); f.set(Origin); f.set(Destination); 
     if (myType == "LIMIT") {
-        FieldFlags f; f.set(Type), f.set(Id); f.set(Symbol); f.set(Direction); f.set(Shares); f.set(Price);
+        f.set(Symbol); f.set(Direction); f.set(Shares); f.set(Price);
         checkFlags(f, myFlags);
-        an::LimitOrder* o = new an::LimitOrder(myId, mySymbol, myDirection, myShares, myPrice);
+        an::LimitOrder* o = new an::LimitOrder(myId, myOrigin, myDestination, mySymbol, myDirection, myShares, myPrice);
         myOrder = o;
     } else if (myType == "MARKET") {
-        FieldFlags f; f.set(Type), f.set(Id); f.set(Symbol); f.set(Direction); f.set(Shares);
+        f.set(Symbol); f.set(Direction); f.set(Shares);
         checkFlags(f, myFlags);
-        an::MarketOrder* o = new an::MarketOrder(myId, mySymbol, myDirection, myShares);
+        an::MarketOrder* o = new an::MarketOrder(myId, myOrigin, myDestination, mySymbol, myDirection, myShares);
         myOrder = o;
     } else if (myType == "CANCEL") {
-        FieldFlags f; f.set(Type), f.set(Id);
         checkFlags(f, myFlags);
-        an::CancelOrder* o = new an::CancelOrder(myId);
+        an::CancelOrder* o = new an::CancelOrder(myId, myOrigin, myDestination);
         myOrder = o;
     } else if (myType == "AMEND") {
-        FieldFlags f; f.set(Type), f.set(Id);
         FieldFlags f1(myFlags); f1.reset(Price); f1.reset(Shares);
         checkFlags(f, f1);
         an::AmendOrder* o = nullptr;
         if (myFlags[Price]) {
-            o = new an::AmendOrder(myId, myPrice);
+            o = new an::AmendOrder(myId, myOrigin, myDestination, myPrice);
         } else if (myFlags[Shares]) {
-            o = new an::AmendOrder(myId, myShares);
+            o = new an::AmendOrder(myId, myOrigin, myDestination, myShares);
         } else {
             throw OrderError("Invalid amend (non given)");
         }
@@ -208,31 +227,3 @@ std::string an::AmendOrder::to_string() const {
 
 an::AmendOrder::~AmendOrder() { }
 
-
-int main() {
-    an::MarketOrder ord1(10,"APPL",an::BUY,10);
-    an::LimitOrder ord2(11,"IBM",an::SELL,10,5.12);
-    an::CancelOrder ord3(10);
-    an::AmendOrder ord4(11);
-    an::AmendOrder ord5(11, 123.45);
-    an::AmendOrder ord6(11, an::number_shares_t(20));
-    std::cout << ord1 << std::endl;
-    std::cout << ord2 << std::endl;
-    std::cout << ord3 << std::endl;
-    std::cout << ord4 << std::endl;
-    std::cout << ord5 << std::endl;
-    std::cout << ord6 << std::endl;
-    try {
-        an::Order* o10 = an::Order::makeOrder("type=LIMIT:id=123:symbol=MSFT:direction=BUY:shares=50:price=92.0");
-	std::cout << *o10 << std::endl;
-        an::Order* o11 = an::Order::makeOrder("type=MARKET:id=123:symbol=MSFT:direction=SELL:shares=25");
-	std::cout << *o11 << std::endl;
-        an::Order* o12 = an::Order::makeOrder("type=AMEND:id=123:shares=30");
-	std::cout << *o12 << std::endl;
-        an::Order* o13 = an::Order::makeOrder("type=CANCEL:id=123");
-	std::cout << *o13 << std::endl;
-    } catch(an::OrderError& e) {
-       std::cout << "ERROR " << e.what() << std::endl;
-    }
-    return 0;
-}

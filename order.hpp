@@ -14,6 +14,7 @@ class OrderError : public runtime_error {
 };
  
 typedef std::uint64_t order_id_t; 
+typedef std::string location_t;
 typedef std::uint32_t number_shares_t; 
 typedef double price_t; 
 typedef enum { BUY, SELL } direction_t;
@@ -37,11 +38,13 @@ struct amend_t {
 };
 
 typedef std::string symbol_t;
+const location_t ME = "ME"; // Matching Engine
 
 class Order {
     public:
-        explicit Order(order_id_t id) : order_id_(id) { }
-        friend std::ostream& operator<<(std::ostream& os, const Order& o) ;
+        Order(order_id_t id, location_t origin, location_t dest = ME) 
+             : order_id_(id), origin_(origin), destination_(dest) { }
+        //friend std::ostream& operator<<(std::ostream& os, const Order& o) ;
         virtual std::string to_string() const = 0;
 
         virtual ~Order() = 0; 
@@ -50,15 +53,15 @@ class Order {
         static Order* makeOrder(const std::string& input);
     private:
         order_id_t order_id_;
+        location_t origin_;
+        location_t destination_;
+        
 };
 
-std::ostream& operator<<(std::ostream& os, const Order& o) {
-    return os << o.to_string() ;
-}
 
 class Execution : public Order {
     public:
-        Execution(order_id_t id, symbol_t sym, direction_t d, number_shares_t s) : Order(id), symbol_(sym), direction_(d), shares_(s) { }
+        Execution(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, number_shares_t s) : Order(id, o, dest), symbol_(sym), direction_(d), shares_(s) { }
         virtual std::string to_string() const = 0;
         virtual ~Execution() = 0;
     private:
@@ -69,7 +72,7 @@ class Execution : public Order {
 
 class LimitOrder : public Execution {
     public:
-        LimitOrder(order_id_t id, symbol_t sym, direction_t d, number_shares_t s, price_t p) : Execution(id, sym, d, s), price_(p) {}
+        LimitOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, number_shares_t s, price_t p) : Execution(id, o, dest, sym, d, s), price_(p) {}
         virtual std::string to_string() const;
         virtual ~LimitOrder() ;   
     private:
@@ -79,7 +82,7 @@ class LimitOrder : public Execution {
 
 class MarketOrder : public Execution {
     public:
-        MarketOrder(order_id_t id, symbol_t sym, direction_t d, number_shares_t s) : Execution(id,sym,d,s) {}
+        MarketOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, number_shares_t s) : Execution(id,o,dest,sym,d,s) {}
         virtual std::string to_string() const;
         virtual ~MarketOrder() ;
     private:
@@ -87,7 +90,7 @@ class MarketOrder : public Execution {
 
 class CancelOrder : public Order {
     public:
-        CancelOrder(order_id_t id) : Order(id) {}
+        CancelOrder(order_id_t id, location_t o, location_t dest) : Order(id, o, dest) {}
         virtual std::string to_string() const;
         virtual ~CancelOrder() ;
     private:
@@ -95,9 +98,9 @@ class CancelOrder : public Order {
 
 class AmendOrder : public Order {
     public:
-        explicit AmendOrder(order_id_t id) : Order(id) { amend_.field = NONE; amend_.price=0.0; }
-        AmendOrder(order_id_t id, price_t p) : Order(id), amend_({PRICE, {.price = p}}) { }
-        AmendOrder(order_id_t id, number_shares_t s) : Order(id) {
+        explicit AmendOrder(order_id_t id, location_t o, location_t dest) : Order(id, o , dest) { amend_.field = NONE; amend_.price=0.0; }
+        AmendOrder(order_id_t id, location_t o, location_t dest, price_t p) : Order(id, o, dest), amend_({PRICE, {.price = p}}) { }
+        AmendOrder(order_id_t id, location_t o, location_t dest, number_shares_t s) : Order(id, o, dest) {
             amend_.field = SHARES; amend_.shares = s;
         }
         virtual std::string to_string() const;
@@ -107,7 +110,14 @@ class AmendOrder : public Order {
       
 };
 
+
+
 } // an namespace
+
+std::ostream& operator<<(std::ostream& os, const an::Order& o);
+
+
+
 
 #endif
 
