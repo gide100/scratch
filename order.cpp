@@ -27,19 +27,19 @@ std::ostream& operator<<(std::ostream& os, const an::Order& o) {
 
 std::string::const_iterator mySplit(std::pair<std::string,std::string>& res, 
                                     std::string::const_iterator myBegin, std::string::const_iterator myEnd) {
-    auto myDelim=std::find(myBegin, myEnd, DELIMITOR);
-    auto myEq=std::find(myBegin, myDelim, SEPERATOR);
-    if (myEq==myDelim) {
+    auto myDelim=std::find(myBegin, myEnd, DELIMITOR); // one=a or one=a:two=b myDelim [end] or one=a[:]
+    auto myEq=std::find(myBegin, myDelim, SEPERATOR); // myEq= one[=]
+    if (myEq==myDelim) { // Not found, end
          std::string token(myBegin, myDelim);
          std::stringstream ss;
-         ss << "Bad token missing seperator [" << token << "]";
+         ss << "Bad token missing seperator ("<<SEPERATOR<<") [" << token << "]";
          throw an::OrderError(ss.str().c_str());
     }
-    res.first.assign(myBegin,myEq);
-    res.second.assign(++myEq,myDelim);
+    res.first.assign(myBegin,myEq); //one
+    res.second.assign(++myEq,myDelim); //a  
 
-    if (myDelim != myEnd) {
-        ++myDelim;
+    if (myDelim != myEnd) { //one=a[:]
+        ++myDelim; // [t]wo=b
     }
     return myDelim;
 }
@@ -49,7 +49,7 @@ typedef std::bitset<Last> FieldFlags;
 void checkFlags(FieldFlags expected, FieldFlags got) {
     if (expected != got) {
         std::stringstream ss;
-        ss << "Invalid flags got " << got << " excepted " << expected;
+        ss << "Invalid flags got " << got << " expected " << expected;
         throw an::OrderError(ss.str());
     }
 }
@@ -74,7 +74,7 @@ an::Order* an::Order::makeOrder(const std::string& input) {
         used = false;
         auto myDelim = mySplit(res, myBegin, myEnd);
         myBegin = myDelim; 
-        std::cout << "TEST " << res.first << "," << res.second << std::endl;
+        // std::cout << "MarkOrder: " << res.first << "," << res.second << std::endl;
         if (res.first == "type") {
             myType = res.second;
             myFlags.set(Type);
@@ -163,7 +163,7 @@ an::Order* an::Order::makeOrder(const std::string& input) {
         } else if (myFlags[Shares]) {
             o = new an::AmendOrder(myId, myOrigin, myDestination, myShares);
         } else {
-            throw OrderError("Invalid amend (non given)");
+            throw OrderError("Invalid amend (none given)");
         }
         myOrder = o;
     } else {
