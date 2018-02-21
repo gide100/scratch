@@ -58,4 +58,5 @@ exe time_test : time_test.cpp system boost_chrono ;
 exe info : info.cpp system thread ;
 exe do_order : do_order.cpp order.cpp system thread ;
 exe unittest_example : unittest_example.cpp system thread unittest ;
+exe unittest_order : unittest_order.cpp order.cpp system thread unittest ;
 
