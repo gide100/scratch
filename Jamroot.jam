@@ -33,10 +33,15 @@ lib boost_system
    :
    : <name>boost_system <search>$(BOOST_LIB_BASE)
    ;
+lib boost_unit_test_framework
+   :
+   : <name>boost_unit_test_framework <search>$(BOOST_LIB_BASE)
+   ;
 
 alias regex : boost_regex : <link>shared <runtime-link>shared ;
 alias system : boost_system :  ;
 alias thread : boost_thread :  ;
+alias unittest : boost_unit_test_framework :  ;
 
 exe example : example.cpp regex system ;
 exe chat_client : chat_client.cpp system thread ;
@@ -51,5 +56,6 @@ exe asio_sample_timer_with_3_thread_strand : asio_sample_timer_with_3_thread_str
 exe myshutdown : shutdown.cpp system thread ;
 exe time_test : time_test.cpp system boost_chrono ;
 exe info : info.cpp system thread ;
-exe order : order.cpp system thread ;
+exe do_order : do_order.cpp order.cpp system thread ;
+exe unittest_example : unittest_example.cpp system thread unittest ;
 

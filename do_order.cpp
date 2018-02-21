@@ -1,0 +1,31 @@
+#include "order.hpp"
+#include <iostream>
+
+int main() {
+    an::MarketOrder ord1(10,"Client1",an::ME,"APPL",an::BUY,10);
+    an::LimitOrder  ord2(11,"Client2",an::ME,"IBM",an::SELL,10,5.12);
+    an::CancelOrder ord3(10,"Client1",an::ME);
+    an::AmendOrder  ord4(11,"Client2",an::ME);
+    an::AmendOrder  ord5(11,"Client2",an::ME, 123.45);
+    an::AmendOrder  ord6(11,"Client2",an::ME,an::number_shares_t(20));
+    std::cout << ord1 << std::endl;
+    std::cout << ord2 << std::endl;
+    std::cout << ord3 << std::endl;
+    std::cout << ord4 << std::endl;
+    std::cout << ord5 << std::endl;
+    std::cout << ord6 << std::endl;
+    try {
+        an::Order* o10 = an::Order::makeOrder("type=LIMIT:origin=Client1:destination=ME:id=123:symbol=MSFT:direction=BUY:shares=50:price=92.0");
+        std::cout << *o10 << std::endl;
+        an::Order* o11 = an::Order::makeOrder("type=MARKET:origin=Client3:destination=ME:id=123:symbol=MSFT:direction=SELL:shares=25");
+        std::cout << *o11 << std::endl;
+        an::Order* o12 = an::Order::makeOrder("type=AMEND:origin=Client3:destination=ME:id=123:shares=30");
+        std::cout << *o12 << std::endl;
+        an::Order* o13 = an::Order::makeOrder("type=CANCEL:origin=Client1:destination=ME:id=123");
+        std::cout << *o13 << std::endl;
+    } catch(an::OrderError& e) {
+       std::cout << "ERROR " << e.what() << std::endl;
+    }
+    return 0;
+}
+
