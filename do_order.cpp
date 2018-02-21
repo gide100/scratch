@@ -15,13 +15,13 @@ int main() {
     std::cout << ord5 << std::endl;
     std::cout << ord6 << std::endl;
     try {
-        an::Order* o10 = an::Order::makeOrder("type=LIMIT:origin=Client1:destination=ME:id=123:symbol=MSFT:direction=BUY:shares=50:price=92.0");
+        an::Order* o10 = an::Order::makeOrder("type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50:price=92.0");
         std::cout << *o10 << std::endl;
-        an::Order* o11 = an::Order::makeOrder("type=MARKET:origin=Client3:destination=ME:id=123:symbol=MSFT:direction=SELL:shares=25");
+        an::Order* o11 = an::Order::makeOrder("type=MARKET:id=123:origin=Client3:destination=ME:symbol=MSFT:direction=SELL:shares=25");
         std::cout << *o11 << std::endl;
-        an::Order* o12 = an::Order::makeOrder("type=AMEND:origin=Client3:destination=ME:id=123:shares=30");
+        an::Order* o12 = an::Order::makeOrder("type=AMEND:id=123:origin=Client3:destination=ME:shares=30");
         std::cout << *o12 << std::endl;
-        an::Order* o13 = an::Order::makeOrder("type=CANCEL:origin=Client1:destination=ME:id=123");
+        an::Order* o13 = an::Order::makeOrder("type=CANCEL:id=123:origin=Client1:destination=ME:");
         std::cout << *o13 << std::endl;
     } catch(an::OrderError& e) {
        std::cout << "ERROR " << e.what() << std::endl;
