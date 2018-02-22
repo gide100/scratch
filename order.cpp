@@ -68,7 +68,7 @@ an::Order* an::Order::makeOrder(const std::string& input) {
     an::symbol_t mySymbol;
     an::direction_t myDirection = an::BUY;
     an::price_t myPrice = 0.0;
-    an::number_shares_t myShares = 0;
+    an::shares_t myShares = 0;
     bool used = false;
     while(myBegin != myEnd) {
         used = false;
@@ -116,7 +116,7 @@ an::Order* an::Order::makeOrder(const std::string& input) {
             }
         }
         if (res.first == "shares") {
-            myShares = std::stoul(res.second);
+            myShares = std::stoull(res.second);
             myFlags.set(Shares);
 	    used = true;
         }
