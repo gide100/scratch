@@ -1,5 +1,7 @@
-#include "order.hpp"
 #include <iostream>
+#include "types.hpp"
+#include "order.hpp"
+#include "fast-cpp-csv-parser/csv.h"
 
 int main() {
     an::MarketOrder ord1(10,"Client1",an::ME,"APPL",an::BUY,10);
@@ -7,7 +9,7 @@ int main() {
     an::CancelOrder ord3(10,"Client1",an::ME);
     an::AmendOrder  ord4(11,"Client2",an::ME);
     an::AmendOrder  ord5(11,"Client2",an::ME, 123.45);
-    an::AmendOrder  ord6(11,"Client2",an::ME,an::number_shares_t(20));
+    an::AmendOrder  ord6(11,"Client2",an::ME,an::shares_t(20));
     std::cout << ord1 << std::endl;
     std::cout << ord2 << std::endl;
     std::cout << ord3 << std::endl;
@@ -25,6 +27,18 @@ int main() {
         std::cout << *o13 << std::endl;
     } catch(an::OrderError& e) {
        std::cout << "ERROR " << e.what() << std::endl;
+    }
+
+
+    io::CSVReader<8> in("security_database.csv");
+    in.read_header(io::ignore_no_column, 
+        "exchange", "symbol", "closing_price", "outstanding_shares", 
+        "born", "died", "tradeable", "tick_ladder_id");
+    an::location_t exchange; an::symbol_t symbol; an::price_t closing_price; an::shares_t outstanding_shares; 
+    std::string born; std::string died; std::string tradeable; an::ladder_id_t tick_ladder_id;
+    while(in.read_row(exchange, symbol, closing_price, outstanding_shares,
+                      born, died, tradeable, tick_ladder_id) ) {
+       std::cout << exchange << '-' << symbol << std::endl;
     }
     return 0;
 }
