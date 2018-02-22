@@ -26,7 +26,7 @@ BOOST_AUTO_TEST_CASE(cancel_order01) {
 BOOST_AUTO_TEST_CASE(amend_order01) {
     an::AmendOrder lo1(11,"Client2",an::ME,99.99);
     BOOST_CHECK_EQUAL(lo1.to_string(),"type=AMEND:id=11:origin=Client2:destination=ME:price=99.99");
-    an::AmendOrder lo2(1234,"ClientA",an::ME,an::number_shares_t(999));
+    an::AmendOrder lo2(1234,"ClientA",an::ME,an::shares_t(999));
     BOOST_CHECK_EQUAL(lo2.to_string(),"type=AMEND:id=1234:origin=ClientA:destination=ME:shares=999");
 }
 BOOST_AUTO_TEST_SUITE_END()
