@@ -1,3 +1,4 @@
+#include "date.h"
 #include <ctime>
 #include <chrono>
 #include <iostream>
@@ -92,5 +93,12 @@ int main()
     if (age.value == height.value) {
          std::cout << "All good" << std::endl;
     }
+
+    std::stringstream str( "28.08.2017 03:59:55.0007" );
+    str.imbue( std::locale("en_GB.UTF-8") );
+    std::chrono::time_point< std::chrono::system_clock, std::chrono::microseconds > result;
+    date::from_stream( str, "%d.%m.%Y %H:%M:%S", result );
+    std::cout << result.time_since_epoch().count() << std::endl;
+
     return 0;
 }
