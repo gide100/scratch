@@ -109,8 +109,5 @@ class AmendOrder : public Order {
 
 std::ostream& operator<<(std::ostream& os, const an::Order& o);
 
-
-
-
 #endif
 
