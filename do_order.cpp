@@ -1,7 +1,7 @@
 #include <iostream>
 #include "types.hpp"
 #include "order.hpp"
-#include "fast-cpp-csv-parser/csv.h"
+#include "security_master.hpp"
 
 int main() {
     an::MarketOrder ord1(10,"Client1",an::ME,"APPL",an::BUY,10);
@@ -29,17 +29,11 @@ int main() {
        std::cout << "ERROR " << e.what() << std::endl;
     }
 
+    an::SecurityDatabase secdb;
+    secdb.loadData("security_database.csv");
 
-    io::CSVReader<8> in("security_database.csv");
-    in.read_header(io::ignore_no_column, 
-        "exchange", "symbol", "closing_price", "outstanding_shares", 
-        "born", "died", "tradeable", "tick_ladder_id");
-    an::location_t exchange; an::symbol_t symbol; an::price_t closing_price; an::shares_t outstanding_shares; 
-    std::string born; std::string died; std::string tradeable; an::ladder_id_t tick_ladder_id;
-    while(in.read_row(exchange, symbol, closing_price, outstanding_shares,
-                      born, died, tradeable, tick_ladder_id) ) {
-       std::cout << exchange << '-' << symbol << std::endl;
-    }
+    an::TickLadder tickdb;
+    tickdb.loadData("NXT_ticksize.txt");
     return 0;
 }
 
