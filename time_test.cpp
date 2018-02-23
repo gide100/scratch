@@ -1,4 +1,5 @@
 #include "date.h"
+#include "types.hpp"
 #include <ctime>
 #include <chrono>
 #include <iostream>
@@ -9,10 +10,10 @@
 #include <boost/chrono/io/time_point_io.hpp>
 #include <boost/chrono/time_point.hpp>
 #include <boost/chrono/chrono.hpp>
-
+#include <boost/operators.hpp>
 
 template <typename T, typename Meaning>
-struct Explicit
+struct Explicit : boost::totally_ordered< Explicit<T,Meaning> >
 {
   //! Default constructor does not initialize the value.
   Explicit() { }
@@ -23,12 +24,15 @@ struct Explicit
   //! Implicit conversion back to the fundamental data type.
   explicit inline operator T () const { return value; }
 
+  bool operator==(Explicit<T,Meaning> const& other) const{return other.value == value;}
+  bool operator<(Explicit<T,Meaning> const& other) const{return other.value < value;}
+
   //! The actual fundamental value.
   T value;
 };
 
-typedef Explicit<int, struct Age> MyAge;
-typedef Explicit<int, struct Height> MyHeight;
+typedef Explicit<int, struct Age_in_years> MyAge;
+typedef Explicit<int, struct Height_in_cm> MyHeight;
 
 
 // See
@@ -85,6 +89,7 @@ int main()
 
     MyAge age(10);
     MyHeight height(10);
+    MyHeight height1(10);
     // ERROR not allowed
     // age = height;
 
@@ -93,12 +98,17 @@ int main()
     if (age.value == height.value) {
          std::cout << "All good" << std::endl;
     }
+    if (height == height1) {
+         std::cout << "All good" << std::endl;
+    }
 
-    std::stringstream str( "28.08.2017 03:59:55.0007" );
+    std::stringstream str( "2017-08-28 03:59:55.0007" );
     str.imbue( std::locale("en_GB.UTF-8") );
     std::chrono::time_point< std::chrono::system_clock, std::chrono::microseconds > result;
-    date::from_stream( str, "%d.%m.%Y %H:%M:%S", result );
+    date::from_stream( str, "%Y-%m-%d %H:%M:%S", result );
     std::cout << result.time_since_epoch().count() << std::endl;
+
+    std::cout << "stringToTimeT " << an::stringToTimeT("2017-08-28 03:59:55.0007", "%Y-%m-%d %H:%M:%S") << std::endl;
 
     return 0;
 }
