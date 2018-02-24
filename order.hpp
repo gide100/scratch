@@ -54,7 +54,8 @@ class Order {
 
 class Execution : public Order {
     public:
-        Execution(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, shares_t s) : Order(id, o, dest), symbol_(sym), direction_(d), shares_(s) { }
+        Execution(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, shares_t s) 
+            : Order(id, o, dest), symbol_(sym), direction_(d), shares_(s) { }
         virtual std::string to_string() const = 0;
         virtual ~Execution() = 0;
     private:
@@ -65,7 +66,8 @@ class Execution : public Order {
 
 class LimitOrder : public Execution {
     public:
-        LimitOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, shares_t s, price_t p) : Execution(id, o, dest, sym, d, s), price_(p) {}
+        LimitOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, shares_t s, price_t p) 
+            : Execution(id, o, dest, sym, d, s), price_(p) {}
         virtual std::string to_string() const;
         virtual ~LimitOrder() ;   
     private:
@@ -75,7 +77,8 @@ class LimitOrder : public Execution {
 
 class MarketOrder : public Execution {
     public:
-        MarketOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, shares_t s) : Execution(id,o,dest,sym,d,s) {}
+        MarketOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, shares_t s) 
+            : Execution(id,o,dest,sym,d,s) {}
         virtual std::string to_string() const;
         virtual ~MarketOrder() ;
     private:
@@ -91,8 +94,12 @@ class CancelOrder : public Order {
 
 class AmendOrder : public Order {
     public:
-        explicit AmendOrder(order_id_t id, location_t o, location_t dest) : Order(id, o , dest) { amend_.field = NONE; amend_.price=0.0; }
-        AmendOrder(order_id_t id, location_t o, location_t dest, price_t p) : Order(id, o, dest), amend_({PRICE, {.price = p}}) { }
+        explicit AmendOrder(order_id_t id, location_t o, location_t dest) 
+            : Order(id, o , dest) { 
+		amend_.field = NONE; amend_.price=0.0; 
+        }
+        AmendOrder(order_id_t id, location_t o, location_t dest, price_t p) 
+            : Order(id, o, dest), amend_({PRICE, {.price = p}}) { }
         AmendOrder(order_id_t id, location_t o, location_t dest, shares_t s) : Order(id, o, dest) {
             amend_.field = SHARES; amend_.shares = s;
         }
