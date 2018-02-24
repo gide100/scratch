@@ -87,6 +87,7 @@ int main()
     std::chrono::system_clock::time_point myTime = parse_my_timestamp("2017-08-28 03:59:55.0007");
     std::cout << myTime.time_since_epoch().count() << std::endl;
 
+
     MyAge age(10);
     MyHeight height(10);
     MyHeight height1(10);
@@ -109,6 +110,9 @@ int main()
     std::cout << result.time_since_epoch().count() << std::endl;
 
     std::cout << "stringToTimeT " << an::stringToTimeT("2017-08-28 03:59:55.0007", "%Y-%m-%d %H:%M:%S") << std::endl;
+    std::cout << "Max time [2038-01-19 03:14:07]" << an::timeTtoString(an::MY_MAX_DATE, "%Y-%b-%d %H:%M:%S") << std::endl;
+    std::cout << "Max time [1970-01-01]" << an::dateToString(0) << std::endl;
+    std::cout << "Max time [2018-02-23 22:53:09]" << an::dateToString(1519426389) << std::endl;
 
     return 0;
 }
