@@ -29,8 +29,11 @@ int main() {
        std::cout << "ERROR " << e.what() << std::endl;
     }
 
-    an::SecurityDatabase secdb;
+    an::SecurityDatabase secdb(an::ME);
     secdb.loadData("security_database.csv");
+    for (auto const& s : secdb.securities()) {
+        std::cout << s.to_string() << std::endl;
+    }
 
     an::TickLadder tickdb;
     tickdb.loadData("NXT_ticksize.txt");

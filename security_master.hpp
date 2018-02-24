@@ -6,6 +6,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <exception>
 
 namespace an {
@@ -27,6 +28,8 @@ struct security_record_t {
     date_t        died; // Date
     bool          tradeable;
     ladder_id_t   ladder_id;
+
+    std::string to_string() const;
 };
 
 struct tick_table_row_t {
@@ -37,6 +40,9 @@ struct tick_table_row_t {
         have_upper = true;
         upper = u; check(); 
     }
+
+    std::string to_string() const;
+
     void check() {
         if (lower < 0.0) {
             throw SecurityError("lower < 0.0");
@@ -77,10 +83,17 @@ struct tick_table_t {
 
 class SecurityDatabase {
     public:
-        SecurityDatabase() {}
+        SecurityDatabase(location_t exchange) : exchange_(exchange) {}
         void loadData(const std::string& filename);
+        const std::vector<security_record_t>& securities() const {
+            return securities_;
+        }
     private:
+        void updateMaps() ;
+        location_t exchange_;
         std::vector<security_record_t> securities_;
+        std::unordered_map<security_id_t, std::size_t> security_id_loc_;
+        std::unordered_map<symbol_t, std::size_t> symbol_loc_;
 };
 
 // https://www.euronext.com/fr/it-documentation/market-data

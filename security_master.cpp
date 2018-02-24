@@ -3,22 +3,42 @@
 #include "security_master.hpp"
 #include <iostream>
 
-std::ostream& operator<<(std::ostream& os, const an::tick_table_t& tt) {
-    auto oldFlags = os.flags();
-    os << std::left;
-    for (auto ttr : tt.rows) {
-        auto oldWidth = os.width(8);
-        os << ttr.lower; os.width(oldWidth);  
-        os << " >= " ;
-        if (ttr.have_upper) {
-            os << "< " ; os.width(8);
-            os << ttr.upper; os.width(oldWidth);
-        } else {
-            os << "          " ;
-        } 
-        os << " " << ttr.increment << std::endl;;
+
+std::string  an::security_record_t::to_string() const {
+    std::stringstream ss;
+    ss << id << ',' << symbol << ',' << closing_price << ',' << outstanding_shares
+       << ',' << dateToString(born) ; 
+    if (has_died) {
+        ss << ",Y," << dateToString(died) ;
+    } else {
+        ss << ",N,0000-00-00" ;
     }
-    os.flags(oldFlags);
+    ss << ',' << (tradeable ? 'Y' : 'N') << ',' << ladder_id ;
+       
+    return ss.str();
+}
+
+
+std::string an::tick_table_row_t::to_string() const {
+    std::stringstream ss;
+    ss << std::left;
+    auto oldWidth = ss.width(8);
+    ss << lower; ss.width(oldWidth);
+    ss << " >= " ;
+    if (have_upper) {
+        ss << "< " ; ss.width(8);
+        ss << upper; ss.width(oldWidth);
+    } else {
+        ss << "          " ;
+    }
+    ss << " " << increment ;
+    return ss.str();
+}
+
+std::ostream& operator<<(std::ostream& os, const an::tick_table_t& tt) {
+    for (auto ttr : tt.rows) {
+        os << ttr.to_string() << std::endl;
+    }
     return os ;
 }
 
@@ -27,18 +47,43 @@ void an::SecurityDatabase::loadData(const std::string& filename) {
     in.read_header(io::ignore_no_column,
         "id", "exchange", "symbol", "closing_price", "outstanding_shares",
         "born", "has_died", "died", "tradeable", "tick_ladder_id");
-    an::security_id_t id; an::location_t exchange; an::symbol_t symbol; an::price_t closing_price; an::shares_t outstanding_shares;
-    std::string born; std::string has_died; std::string died; std::string tradeable; an::ladder_id_t tick_ladder_id;
-    while(in.read_row(id, exchange, symbol, closing_price, outstanding_shares,
-                      born, has_died, died, tradeable, tick_ladder_id) ) {
-       std::cout << id << ',' << exchange << '-' << symbol << ',' << an::dateToTimeT(born) << ',' << has_died << std::endl;
+    std::string born; char has_died; std::string died; char tradeable;
+    an::security_record_t sr;
+    while(in.read_row(sr.id, sr.exchange, sr.symbol, sr.closing_price, sr.outstanding_shares,
+                      born, has_died, died, tradeable, sr.ladder_id) ) {
+       sr.born = an::dateToTimeT(born);
+       sr.has_died = has_died == 'Y';
+       if (sr.has_died) {
+           sr.died = an::dateToTimeT(died);
+       } else {
+           sr.died = an::MY_MAX_DATE;
+       }
+       sr.tradeable = tradeable == 'Y';
+       securities_.push_back(sr);
+       // std::cout << sr.to_string() << std::endl;
     }
+    updateMaps();
+}
+
+void an::SecurityDatabase::updateMaps() {
+    security_id_loc_.clear();
+    symbol_loc_.clear();
+    std::size_t i = 0;
+    for (const auto& sec: securities_) {
+        // Just index live securities on this exchange
+        if (!sec.has_died && (sec.exchange == exchange_) ) {
+            security_id_loc_.emplace(sec.id, i);
+            symbol_loc_.emplace(sec.symbol, i);
+        }
+        ++i;
+    }
+    std::cout << symbol_loc_.find("MSFT")->second << std::endl ;
 }
 
 void an::TickLadder::addTickLadder(const ladder_id_t id, const tick_table_t& ladder) {
-    std::cout << "Tick ID = " << id << std::endl;
-    std::cout << ladder << std::endl;
-    ladders_.insert(std::pair<ladder_id_t, tick_table_t>(id, ladder)); 
+    //std::cout << "Tick ID = " << id << std::endl;
+    //std::cout << ladder << std::endl;
+    ladders_.emplace(id, ladder); 
 }
 
 
