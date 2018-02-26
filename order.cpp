@@ -8,6 +8,19 @@
 const char DELIMITOR = ':';
 const char SEPERATOR = '=';
 
+an::Message::~Message() { }
+
+
+std::string an::Login::to_string() const {
+    std::stringstream ss;
+    ss << "type" << SEPERATOR << "LOGIN" << DELIMITOR
+       << "origin" << SEPERATOR << origin_ << DELIMITOR
+       << "destination" << SEPERATOR << destination_ ;
+    return ss.str();
+}
+
+an::Login::~Login() { }
+
 std::string an::Order::to_string() const {
     std::stringstream ss;
     ss << "id" << SEPERATOR << order_id_ << DELIMITOR  
@@ -18,8 +31,8 @@ std::string an::Order::to_string() const {
 
 an::Order::~Order() { }
 
-std::ostream& operator<<(std::ostream& os, const an::Order& o) {
-    return os << o.to_string() ;
+std::ostream& operator<<(std::ostream& os, const an::Message& msg) {
+    return os << msg.to_string() ;
 }
 
 
@@ -54,7 +67,7 @@ void checkFlags(FieldFlags expected, FieldFlags got) {
     }
 }
 
-an::Order* an::Order::makeOrder(const std::string& input) {
+an::Message* an::Message::makeOrder(const std::string& input) {
     auto myEnd = input.cend();
     auto myBegin = input.cbegin();
     std::pair<std::string,std::string> res;
@@ -138,7 +151,7 @@ an::Order* an::Order::makeOrder(const std::string& input) {
         myPrevFlags = myFlags;
     }
 
-    Order* myOrder = nullptr;
+    Message* myOrder = nullptr;
     FieldFlags f; f.set(Type); f.set(Id); f.set(Origin); f.set(Destination); 
     if (myType == "LIMIT") {
         f.set(Symbol); f.set(Direction); f.set(Shares); f.set(Price);
@@ -165,6 +178,11 @@ an::Order* an::Order::makeOrder(const std::string& input) {
         } else {
             throw OrderError("Invalid amend (none given)");
         }
+        myOrder = o;
+    } else if (myType == "LOGIN") {
+        FieldFlags f1; f1.set(Type); f1.set(Origin); f1.set(Destination);
+        checkFlags(f1, myFlags);
+        an::Login* o = new an::Login(myOrigin, myDestination);
         myOrder = o;
     } else {
         std::stringstream ss; 

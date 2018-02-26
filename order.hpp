@@ -33,21 +33,42 @@ struct amend_t {
     }    
 };
 
-class Order {
+class Message {
+    public:
+        Message(location_t origin, location_t dest = ME) 
+            : origin_(origin), destination_(dest) {}
+        virtual std::string to_string() const = 0;
+
+        virtual ~Message() = 0; 
+        
+        // Factory and string parser
+        static Message* makeOrder(const std::string& input);
+    protected:
+        location_t origin_;
+        location_t destination_;
+};
+
+class Login : public Message {
+    public:
+        Login(location_t origin, location_t dest = ME) : Message(origin, dest) { }
+        virtual std::string to_string() const;
+
+        virtual ~Login(); 
+};
+
+class Order : public Message {
     public:
         Order(order_id_t id, location_t origin, location_t dest = ME) 
-             : order_id_(id), origin_(origin), destination_(dest) { }
+             : Message(origin, dest), order_id_(id) //, origin_(origin), destination_(dest) 
+             { }
         //friend std::ostream& operator<<(std::ostream& os, const Order& o) ;
         virtual std::string to_string() const = 0;
 
         virtual ~Order() = 0; 
-        
-        // Factory and string parser
-        static Order* makeOrder(const std::string& input);
     private:
         order_id_t order_id_;
-        location_t origin_;
-        location_t destination_;
+        //location_t origin_;
+        //location_t destination_;
         
 };
 
@@ -114,7 +135,7 @@ class AmendOrder : public Order {
 
 } // an namespace
 
-std::ostream& operator<<(std::ostream& os, const an::Order& o);
+std::ostream& operator<<(std::ostream& os, const an::Message& msg);
 
 #endif
 

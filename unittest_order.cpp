@@ -33,22 +33,30 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(make_orders)
 BOOST_AUTO_TEST_CASE(limit_order01) {
-    an::Order* o1 = an::Order::makeOrder("origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50:type=LIMIT:id=123");
+    an::Message* o1 = an::Order::makeOrder("origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50:type=LIMIT:id=123");
     BOOST_CHECK_EQUAL(o1->to_string(),"type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50:price=92");
 }
 BOOST_AUTO_TEST_CASE(market_order01) {
-    an::Order* o1 = an::Order::makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
+    an::Message* o1 = an::Order::makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
     BOOST_CHECK_EQUAL(o1->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
 }
 BOOST_AUTO_TEST_CASE(cancel_order01) {
-    an::Order* o1 = an::Order::makeOrder("type=CANCEL:id=123:origin=Client1:destination=ME");
+    an::Message* o1 = an::Order::makeOrder("type=CANCEL:id=123:origin=Client1:destination=ME");
     BOOST_CHECK_EQUAL(o1->to_string(),"type=CANCEL:id=123:origin=Client1:destination=ME");
 }
 BOOST_AUTO_TEST_CASE(amend_order01) {
-    an::Order* o1 = an::Order::makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:price=99.99");
+    an::Message* o1 = an::Order::makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:price=99.99");
     BOOST_CHECK_EQUAL(o1->to_string(),"type=AMEND:id=123:origin=Client1:destination=ME:price=99.99");
-    an::Order* o2 = an::Order::makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:shares=99");
+    an::Message* o2 = an::Order::makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:shares=99");
     BOOST_CHECK_EQUAL(o2->to_string(),"type=AMEND:id=123:origin=Client1:destination=ME:shares=99");
+}
+BOOST_AUTO_TEST_SUITE_END()
+
+
+BOOST_AUTO_TEST_SUITE(make_login)
+BOOST_AUTO_TEST_CASE(login_01) {
+    an::Message* o1 = an::Message::makeOrder("type=LOGIN:origin=Client1:destination=ME");
+    BOOST_CHECK_EQUAL(o1->to_string(),"type=LOGIN:origin=Client1:destination=ME");
 }
 BOOST_AUTO_TEST_SUITE_END()
 
