@@ -88,6 +88,13 @@ class SecurityDatabase {
         const std::vector<security_record_t>& securities() const {
             return securities_;
         }
+        std::size_t find(const symbol_t& symbol) const {
+             auto search = symbol_loc_.find(symbol);
+             if (search != symbol_loc_.end()) {
+		 return search->second;
+             }
+             return std::numeric_limits<std::size_t>::max();
+        }
     private:
         void updateMaps() ;
         location_t exchange_;

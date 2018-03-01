@@ -77,7 +77,7 @@ void an::SecurityDatabase::updateMaps() {
         }
         ++i;
     }
-    std::cout << symbol_loc_.find("MSFT")->second << std::endl ;
+    std::cout << "DEBUG APPL=" <<  symbol_loc_.find("APPL")->second << std::endl ;
 }
 
 void an::TickLadder::addTickLadder(const ladder_id_t id, const tick_table_t& ladder) {
