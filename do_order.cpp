@@ -2,16 +2,21 @@
 #include "types.hpp"
 #include "order.hpp"
 #include "security_master.hpp"
+#include "matching_engine.hpp"
 
 int main() {
-    an::MarketOrder ord1(10,"Client1",an::ME,"APPL",an::BUY,10);
+    an::MarketOrder ord1a( 1,"Client1",an::ME,"APPL",an::BUY,10);
+    an::MarketOrder ord1b( 2,"Client2",an::ME,"APPL",an::SELL,10);
+    an::LimitOrder  ord1c( 3,"Client2",an::ME,"APPL",an::SELL,10,12.23);
+    an::LimitOrder  ord1d( 4,"Client2",an::ME,"APPL",an::BUY,10,12.23);
     an::LimitOrder  ord2(11,"Client2",an::ME,"IBM",an::SELL,10,5.12);
     an::CancelOrder ord3(10,"Client1",an::ME);
     an::AmendOrder  ord4(11,"Client2",an::ME);
     an::AmendOrder  ord5(11,"Client2",an::ME, 123.45);
     an::AmendOrder  ord6(11,"Client2",an::ME,an::shares_t(20));
     an::Login       ord7("Client2",an::ME);
-    std::cout << ord1 << std::endl;
+    std::cout << ord1a << std::endl;
+    std::cout << ord1b << std::endl;
     std::cout << ord2 << std::endl;
     std::cout << ord3 << std::endl;
     std::cout << ord4 << std::endl;
@@ -39,6 +44,15 @@ int main() {
 
     an::TickLadder tickdb;
     tickdb.loadData("NXT_ticksize.txt");
+
+    an::MatchingEngine me(an::ME, secdb);
+    ord1a.applyOrder(me);
+    ord1b.applyOrder(me);
+    ord1c.applyOrder(me);
+    ord1d.applyOrder(me);
+ 
+    std::cout << me.to_string() << std::endl;
+
     return 0;
 }
 
