@@ -1,4 +1,5 @@
 #include "order.hpp"
+#include "matching_engine.hpp"
 #include <iostream>
 #include <sstream>
 #include <algorithm>
@@ -10,6 +11,15 @@ const char SEPERATOR = '=';
 
 an::Message::~Message() { }
 
+
+void an::Login::applyOrder(MatchingEngine& me) {
+   throw OrderError("Login not appliable to matching engine");
+}
+
+void an::Order::pack(an::BookRecord& rec) const {
+   rec = DefaultBookRecord;
+   rec.id = order_id_;
+}
 
 std::string an::Login::to_string() const {
     std::stringstream ss;
@@ -194,14 +204,31 @@ an::Message* an::Message::makeOrder(const std::string& input) {
 }
 
 
+void an::Execution::pack(an::BookRecord& rec) const {
+    Order::pack(rec);
+    rec.direction = direction_;
+    rec.shares = shares_;
+}
+
 std::string an::Execution::to_string() const {
     std::stringstream ss;
     ss << Order::to_string() << DELIMITOR << "symbol" << SEPERATOR << symbol_ << DELIMITOR 
-       << "direction" << SEPERATOR << ((direction_==BUY) ? "BUY" : "SELL") << DELIMITOR << "shares" << SEPERATOR << shares_;
+       << "direction" << SEPERATOR << an::to_string(direction_) << DELIMITOR << "shares" << SEPERATOR << shares_;
     return ss.str();
 }
 
 an::Execution::~Execution() { }
+
+
+
+void an::LimitOrder::applyOrder(MatchingEngine& me) {
+   me.applyOrder(this);
+}
+
+void an::LimitOrder::pack(an::BookRecord& rec) const {
+    Execution::pack(rec); rec.order_type = an::LIMIT;
+    rec.price = price_;
+}
 
 
 std::string an::LimitOrder::to_string() const {
@@ -212,12 +239,33 @@ std::string an::LimitOrder::to_string() const {
 an::LimitOrder::~LimitOrder() { }
 
 
+
+
+void an::MarketOrder::applyOrder(MatchingEngine& me) {
+   me.applyOrder(this);
+}
+
+void an::MarketOrder::pack(an::BookRecord& rec) const {
+   Execution::pack(rec); rec.order_type = an::MARKET;
+}
+
 std::string an::MarketOrder::to_string() const {
     std::stringstream ss;
     ss << "type" << SEPERATOR << "MARKET" << DELIMITOR << Execution::to_string() ;
     return ss.str();
 }
 an::MarketOrder::~MarketOrder() { }
+
+
+
+
+void an::CancelOrder::applyOrder(MatchingEngine& me) {
+   me.applyOrder(this);
+}
+
+void an::CancelOrder::pack(an::BookRecord& rec) const {
+   Order::pack(rec); rec.order_type= an::CANCEL;
+}
 
 std::string an::CancelOrder::to_string() const {
     std::stringstream ss;
@@ -226,6 +274,16 @@ std::string an::CancelOrder::to_string() const {
 }
 
 an::CancelOrder::~CancelOrder() { }
+
+
+
+void an::AmendOrder::applyOrder(MatchingEngine& me) {
+   me.applyOrder(this);
+}
+
+void an::AmendOrder::pack(an::BookRecord& rec) const {
+    Order::pack(rec); rec.order_type= an::AMEND;
+}
 
 std::string an::AmendOrder::to_string() const {
     std::stringstream ss;

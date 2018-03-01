@@ -11,7 +11,7 @@ namespace an {
 using std::runtime_error; 
 class OrderError : public runtime_error {
     public:
-        OrderError(const std::string& msg) : runtime_error(msg) {}
+        OrderError(const std::string& msg) : runtime_error(msg) { }
 };
  
 typedef enum { NONE, PRICE, SHARES } field_t;
@@ -33,6 +33,11 @@ struct amend_t {
     }    
 };
 
+
+
+class MatchingEngine ;
+struct BookRecord ;
+
 class Message {
     public:
         Message(location_t origin, location_t dest = ME) 
@@ -43,6 +48,8 @@ class Message {
         
         // Factory and string parser
         static Message* makeOrder(const std::string& input);
+
+        virtual void applyOrder(MatchingEngine& me) = 0;
     protected:
         location_t origin_;
         location_t destination_;
@@ -54,21 +61,24 @@ class Login : public Message {
         virtual std::string to_string() const;
 
         virtual ~Login(); 
+
+        virtual void applyOrder(MatchingEngine& me) ;
 };
+
 
 class Order : public Message {
     public:
         Order(order_id_t id, location_t origin, location_t dest = ME) 
              : Message(origin, dest), order_id_(id) //, origin_(origin), destination_(dest) 
              { }
-        //friend std::ostream& operator<<(std::ostream& os, const Order& o) ;
         virtual std::string to_string() const = 0;
 
         virtual ~Order() = 0; 
-    private:
+
+        virtual void applyOrder(MatchingEngine& me) = 0;
+        virtual void pack(BookRecord& rec) const = 0;
+    protected:
         order_id_t order_id_;
-        //location_t origin_;
-        //location_t destination_;
         
 };
 
@@ -79,7 +89,11 @@ class Execution : public Order {
             : Order(id, o, dest), symbol_(sym), direction_(d), shares_(s) { }
         virtual std::string to_string() const = 0;
         virtual ~Execution() = 0;
-    private:
+
+        virtual void applyOrder(MatchingEngine& me) = 0;
+        virtual void pack(BookRecord& rec) const = 0;
+        const symbol_t& symbol() { return symbol_; }
+    protected:
         symbol_t symbol_;
         direction_t direction_;
         shares_t shares_;
@@ -91,7 +105,10 @@ class LimitOrder : public Execution {
             : Execution(id, o, dest, sym, d, s), price_(p) {}
         virtual std::string to_string() const;
         virtual ~LimitOrder() ;   
-    private:
+
+        virtual void applyOrder(MatchingEngine& me) ;
+        virtual void pack(BookRecord& rec) const ;
+    protected:
         price_t price_;
 };
 
@@ -102,7 +119,10 @@ class MarketOrder : public Execution {
             : Execution(id,o,dest,sym,d,s) {}
         virtual std::string to_string() const;
         virtual ~MarketOrder() ;
-    private:
+
+        virtual void applyOrder(MatchingEngine& me) ;
+        virtual void pack(BookRecord& rec) const ;
+    protected:
 };
 
 class CancelOrder : public Order {
@@ -110,7 +130,10 @@ class CancelOrder : public Order {
         CancelOrder(order_id_t id, location_t o, location_t dest) : Order(id, o, dest) {}
         virtual std::string to_string() const;
         virtual ~CancelOrder() ;
-    private:
+
+        virtual void applyOrder(MatchingEngine& me) ;
+        virtual void pack(BookRecord& rec) const ;
+    protected:
 };
 
 class AmendOrder : public Order {
@@ -126,8 +149,11 @@ class AmendOrder : public Order {
         }
         virtual std::string to_string() const;
         virtual ~AmendOrder() ;
-    private:
-      amend_t amend_;
+
+        virtual void applyOrder(MatchingEngine& me) ;
+        virtual void pack(BookRecord& rec) const ;
+    protected:
+        amend_t amend_;
       
 };
 
