@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <ctime>
 #include <chrono>
+#include <iomanip>
+#include <limits>
 #include "date.h"
 
 namespace an {
@@ -13,8 +15,10 @@ namespace an {
 typedef std::uint64_t order_id_t;
 typedef std::string location_t;
 typedef std::uint64_t shares_t;
+typedef std::uint64_t sequence_t;
 typedef double price_t;
 typedef enum { BUY, SELL } direction_t;
+typedef enum { LIMIT, MARKET, CANCEL, AMEND } order_t;
 
 typedef std::string symbol_t;
 const location_t ME = "ME"; // Matching Engine
@@ -30,6 +34,15 @@ const std::string MY_LOCALE = "en_GB.UTF-8";
 // Constants
 const price_t MAX_SHARE_PRICE = 1000000.0;
 const shares_t MAX_OUTSTANDING_SHARES = 10000000000;
+
+inline const char* to_string(direction_t d) {
+     switch (d) {
+        case BUY: return "BUY";
+        case SELL: return "SELL";
+        default:
+           assert(false);
+     }
+}
 
 
 inline std::time_t stringToTimeT(const std::string& dateStr, const char* const dateFormat) {
