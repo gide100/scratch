@@ -8,6 +8,10 @@
 #include <chrono>
 #include <iomanip>
 #include <limits>
+#include <vector>
+#include <map>
+#include <unordered_map>
+#include <exception>
 #include "date.h"
 
 namespace an {
@@ -17,8 +21,10 @@ typedef std::string location_t;
 typedef std::uint64_t shares_t;
 typedef std::uint64_t sequence_t;
 typedef double price_t;
-typedef enum { BUY, SELL } direction_t;
-typedef enum { LIMIT, MARKET, CANCEL, AMEND } order_t;
+enum direction_t { BUY, SELL };
+enum order_t { LIMIT, MARKET, CANCEL, AMEND };
+enum response_t { ACK, REJECT, UNKNOWN, ERROR }; 
+typedef std::string text_t;
 
 typedef std::string symbol_t;
 const location_t ME = "ME"; // Matching Engine
@@ -39,6 +45,17 @@ inline const char* to_string(direction_t d) {
      switch (d) {
         case BUY: return "BUY";
         case SELL: return "SELL";
+        default:
+           assert(false);
+     }
+}
+
+inline const char* to_string(response_t r) {
+     switch (r) {
+        case ACK: return "ACK";
+        case REJECT: return "REJECT";
+        case UNKNOWN: return "UNKNOWN";
+        case ERROR: return "ERROR";
         default:
            assert(false);
      }
