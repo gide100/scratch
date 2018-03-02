@@ -36,12 +36,12 @@ struct amend_t {
 
 
 class MatchingEngine ;
-struct BookRecord ;
+struct SideRecord ;
 
 class Message {
     public:
         Message(location_t origin, location_t dest = ME) 
-            : origin_(origin), destination_(dest) {}
+            : origin_(origin), destination_(dest), reverse_direction_(false) {}
         virtual std::string to_string() const = 0;
 
         virtual ~Message() = 0; 
@@ -50,9 +50,15 @@ class Message {
         static Message* makeOrder(const std::string& input);
 
         virtual void applyOrder(MatchingEngine& me) = 0;
+
+        const location_t& origin() const { return origin_; }
+        const location_t& destination() const { return destination_; }
+
+        void reverse_direction() { reverse_direction_ = !reverse_direction_; }
     protected:
         location_t origin_;
         location_t destination_;
+        bool reverse_direction_;
 };
 
 class Login : public Message {
@@ -68,17 +74,20 @@ class Login : public Message {
 
 class Order : public Message {
     public:
-        Order(order_id_t id, location_t origin, location_t dest = ME) 
-             : Message(origin, dest), order_id_(id) //, origin_(origin), destination_(dest) 
+        Order(order_id_t id, location_t origin, location_t dest, symbol_t sym) 
+             : Message(origin, dest), order_id_(id), symbol_(sym) //, origin_(origin), destination_(dest) 
              { }
         virtual std::string to_string() const = 0;
 
         virtual ~Order() = 0; 
 
         virtual void applyOrder(MatchingEngine& me) = 0;
-        virtual void pack(BookRecord& rec) const = 0;
+        virtual void pack(SideRecord& rec) const = 0;
+        order_id_t orderId() const { return order_id_; }
+        const symbol_t& symbol() const { return symbol_; }
     protected:
         order_id_t order_id_;
+        symbol_t symbol_;
         
 };
 
@@ -86,15 +95,13 @@ class Order : public Message {
 class Execution : public Order {
     public:
         Execution(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, shares_t s) 
-            : Order(id, o, dest), symbol_(sym), direction_(d), shares_(s) { }
+            : Order(id, o, dest, sym), direction_(d), shares_(s) { }
         virtual std::string to_string() const = 0;
         virtual ~Execution() = 0;
 
         virtual void applyOrder(MatchingEngine& me) = 0;
-        virtual void pack(BookRecord& rec) const = 0;
-        const symbol_t& symbol() { return symbol_; }
+        virtual void pack(SideRecord& rec) const = 0;
     protected:
-        symbol_t symbol_;
         direction_t direction_;
         shares_t shares_;
 };
@@ -107,7 +114,7 @@ class LimitOrder : public Execution {
         virtual ~LimitOrder() ;   
 
         virtual void applyOrder(MatchingEngine& me) ;
-        virtual void pack(BookRecord& rec) const ;
+        virtual void pack(SideRecord& rec) const ;
     protected:
         price_t price_;
 };
@@ -121,40 +128,66 @@ class MarketOrder : public Execution {
         virtual ~MarketOrder() ;
 
         virtual void applyOrder(MatchingEngine& me) ;
-        virtual void pack(BookRecord& rec) const ;
+        virtual void pack(SideRecord& rec) const ;
     protected:
 };
 
 class CancelOrder : public Order {
     public:
-        CancelOrder(order_id_t id, location_t o, location_t dest) : Order(id, o, dest) {}
+        CancelOrder(order_id_t id, location_t o, location_t dest, symbol_t sym) : Order(id, o, dest, sym) {}
         virtual std::string to_string() const;
         virtual ~CancelOrder() ;
 
         virtual void applyOrder(MatchingEngine& me) ;
-        virtual void pack(BookRecord& rec) const ;
+        virtual void pack(SideRecord& rec) const ;
     protected:
 };
 
 class AmendOrder : public Order {
     public:
-        explicit AmendOrder(order_id_t id, location_t o, location_t dest) 
-            : Order(id, o , dest) { 
+        explicit AmendOrder(order_id_t id, location_t o, location_t dest, symbol_t sym) 
+            : Order(id, o, dest, sym) { 
 		amend_.field = NONE; amend_.price=0.0; 
         }
-        AmendOrder(order_id_t id, location_t o, location_t dest, price_t p) 
-            : Order(id, o, dest), amend_({PRICE, {.price = p}}) { }
-        AmendOrder(order_id_t id, location_t o, location_t dest, shares_t s) : Order(id, o, dest) {
+        AmendOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, price_t p) 
+            : Order(id, o, dest, sym), amend_({PRICE, {.price = p}}) { }
+        AmendOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, shares_t s) 
+            : Order(id, o, dest, sym) {
             amend_.field = SHARES; amend_.shares = s;
         }
         virtual std::string to_string() const;
         virtual ~AmendOrder() ;
 
-        virtual void applyOrder(MatchingEngine& me) ;
-        virtual void pack(BookRecord& rec) const ;
+        virtual void applyOrder(MatchingEngine& me);
+        virtual void pack(SideRecord& rec) const;
+        an::amend_t& amend() { return amend_; }
     protected:
         amend_t amend_;
       
+};
+
+// Decorator to responde to messages
+class Response : public Message {
+    public:
+        explicit Response(Message* m, response_t response=ERROR, text_t text = "")
+             : Message("",""), message_(m), response_(response), text_(text) {
+            if (m == nullptr) {
+                throw OrderError("nullptr in Response Message");
+            }
+            if ((text_.find(':')!=text_t::npos) || (text_.find('=')!=text_t::npos)) {
+                throw OrderError("Cannot have [:|=] in Response text");
+            }
+            m->reverse_direction();
+        }
+        virtual std::string to_string() const;
+        virtual ~Response();
+
+        virtual void applyOrder(MatchingEngine& me);
+        virtual void pack(SideRecord& rec); 
+    protected:
+        Message* message_;
+        response_t response_;
+        text_t text_;
 };
 
 

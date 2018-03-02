@@ -9,6 +9,12 @@
 const char DELIMITOR = ':';
 const char SEPERATOR = '=';
 
+std::string an::Message::to_string() const {
+    std::ostringstream os;
+    os << "origin" << SEPERATOR << (reverse_direction_ ? destination_ : origin_ )  << DELIMITOR
+       << "destination" << SEPERATOR << (reverse_direction_ ? origin_ : destination_ ) ;
+    return os.str();
+}
 an::Message::~Message() { }
 
 
@@ -16,16 +22,15 @@ void an::Login::applyOrder(MatchingEngine& me) {
    throw OrderError("Login not appliable to matching engine");
 }
 
-void an::Order::pack(an::BookRecord& rec) const {
-   rec = DefaultBookRecord;
+void an::Order::pack(an::SideRecord& rec) const {
+   rec = DefaultSideRecord;
    rec.id = order_id_;
 }
 
 std::string an::Login::to_string() const {
     std::stringstream ss;
     ss << "type" << SEPERATOR << "LOGIN" << DELIMITOR
-       << "origin" << SEPERATOR << origin_ << DELIMITOR
-       << "destination" << SEPERATOR << destination_ ;
+       << Message::to_string();
     return ss.str();
 }
 
@@ -34,8 +39,8 @@ an::Login::~Login() { }
 std::string an::Order::to_string() const {
     std::stringstream ss;
     ss << "id" << SEPERATOR << order_id_ << DELIMITOR  
-       << "origin" << SEPERATOR << origin_ << DELIMITOR
-       << "destination" << SEPERATOR << destination_ ;
+       << Message::to_string() << DELIMITOR
+       << "symbol" << SEPERATOR << symbol_ ;
     return ss.str();
 }
 
@@ -97,7 +102,7 @@ an::Message* an::Message::makeOrder(const std::string& input) {
         used = false;
         auto myDelim = mySplit(res, myBegin, myEnd);
         myBegin = myDelim; 
-        // std::cout << "MarkOrder: " << res.first << "," << res.second << std::endl;
+        //std::cout << "MarkOrder: " << res.first << "," << res.second << std::endl;
         if (res.first == "type") {
             myType = res.second;
             myFlags.set(Type);
@@ -139,7 +144,15 @@ an::Message* an::Message::makeOrder(const std::string& input) {
             }
         }
         if (res.first == "shares") {
-            myShares = std::stoull(res.second);
+            char* stop;
+            long myLong = std::strtol(res.second.c_str(), &stop, 10);
+            if (*stop != '\0') {
+                throw OrderError("Invalid shares could not convert to long");
+            } 
+            if ((myLong > (long)an::MAX_OUTSTANDING_SHARES) || (myLong < 0)) {
+                throw OrderError("Invalid shares - out of range");
+            }
+            myShares = myLong;
             myFlags.set(Shares);
 	    used = true;
         }
@@ -162,29 +175,32 @@ an::Message* an::Message::makeOrder(const std::string& input) {
     }
 
     Message* myOrder = nullptr;
-    FieldFlags f; f.set(Type); f.set(Id); f.set(Origin); f.set(Destination); 
+    FieldFlags f; f.set(Type); f.set(Id); f.set(Origin); f.set(Destination); f.set(Symbol);
     if (myType == "LIMIT") {
-        f.set(Symbol); f.set(Direction); f.set(Shares); f.set(Price);
+        f.set(Direction); f.set(Shares); f.set(Price);
         checkFlags(f, myFlags);
         an::LimitOrder* o = new an::LimitOrder(myId, myOrigin, myDestination, mySymbol, myDirection, myShares, myPrice);
         myOrder = o;
     } else if (myType == "MARKET") {
-        f.set(Symbol); f.set(Direction); f.set(Shares);
+        f.set(Direction); f.set(Shares);
         checkFlags(f, myFlags);
         an::MarketOrder* o = new an::MarketOrder(myId, myOrigin, myDestination, mySymbol, myDirection, myShares);
         myOrder = o;
     } else if (myType == "CANCEL") {
         checkFlags(f, myFlags);
-        an::CancelOrder* o = new an::CancelOrder(myId, myOrigin, myDestination);
+        an::CancelOrder* o = new an::CancelOrder(myId, myOrigin, myDestination, mySymbol);
         myOrder = o;
     } else if (myType == "AMEND") {
         FieldFlags f1(myFlags); f1.reset(Price); f1.reset(Shares);
         checkFlags(f, f1);
         an::AmendOrder* o = nullptr;
         if (myFlags[Price]) {
-            o = new an::AmendOrder(myId, myOrigin, myDestination, myPrice);
+            o = new an::AmendOrder(myId, myOrigin, myDestination, mySymbol, myPrice);
         } else if (myFlags[Shares]) {
-            o = new an::AmendOrder(myId, myOrigin, myDestination, myShares);
+            if (myShares <= 0) {
+                throw OrderError("Invalid amend number of shares too small");
+            }
+            o = new an::AmendOrder(myId, myOrigin, myDestination, mySymbol, myShares);
         } else {
             throw OrderError("Invalid amend (none given)");
         }
@@ -199,12 +215,16 @@ an::Message* an::Message::makeOrder(const std::string& input) {
         ss << "Invalid order type [" << myType << "]";
         throw OrderError(ss.str());
     }
+    
+    if ((myType != "LOGIN") && (myId == 0)) {
+        throw OrderError("Invalid id set to 0");
+    }
          
     return myOrder;
 }
 
 
-void an::Execution::pack(an::BookRecord& rec) const {
+void an::Execution::pack(an::SideRecord& rec) const {
     Order::pack(rec);
     rec.direction = direction_;
     rec.shares = shares_;
@@ -212,8 +232,9 @@ void an::Execution::pack(an::BookRecord& rec) const {
 
 std::string an::Execution::to_string() const {
     std::stringstream ss;
-    ss << Order::to_string() << DELIMITOR << "symbol" << SEPERATOR << symbol_ << DELIMITOR 
-       << "direction" << SEPERATOR << an::to_string(direction_) << DELIMITOR << "shares" << SEPERATOR << shares_;
+    ss << Order::to_string() << DELIMITOR
+       << "direction" << SEPERATOR << an::to_string(direction_) << DELIMITOR 
+       << "shares" << SEPERATOR << shares_;
     return ss.str();
 }
 
@@ -225,7 +246,7 @@ void an::LimitOrder::applyOrder(MatchingEngine& me) {
    me.applyOrder(this);
 }
 
-void an::LimitOrder::pack(an::BookRecord& rec) const {
+void an::LimitOrder::pack(an::SideRecord& rec) const {
     Execution::pack(rec); rec.order_type = an::LIMIT;
     rec.price = price_;
 }
@@ -233,7 +254,8 @@ void an::LimitOrder::pack(an::BookRecord& rec) const {
 
 std::string an::LimitOrder::to_string() const {
     std::stringstream ss;
-    ss << "type" << SEPERATOR << "LIMIT" << DELIMITOR << Execution::to_string() << DELIMITOR << "price" << SEPERATOR  << price_;
+    ss << "type" << SEPERATOR << "LIMIT" << DELIMITOR << Execution::to_string() << DELIMITOR 
+       << "price" << SEPERATOR << price_;
     return ss.str();
 }
 an::LimitOrder::~LimitOrder() { }
@@ -245,8 +267,11 @@ void an::MarketOrder::applyOrder(MatchingEngine& me) {
    me.applyOrder(this);
 }
 
-void an::MarketOrder::pack(an::BookRecord& rec) const {
-   Execution::pack(rec); rec.order_type = an::MARKET;
+void an::MarketOrder::pack(an::SideRecord& rec) const {
+    Execution::pack(rec); rec.order_type = an::MARKET;
+    if (direction_ == an::BUY) {
+        rec.price = MAX_SHARE_PRICE; // Are 0.0 priced limit SELL or high priced limit BUY 
+    }
 }
 
 std::string an::MarketOrder::to_string() const {
@@ -263,7 +288,7 @@ void an::CancelOrder::applyOrder(MatchingEngine& me) {
    me.applyOrder(this);
 }
 
-void an::CancelOrder::pack(an::BookRecord& rec) const {
+void an::CancelOrder::pack(an::SideRecord& rec) const {
    Order::pack(rec); rec.order_type= an::CANCEL;
 }
 
@@ -281,7 +306,7 @@ void an::AmendOrder::applyOrder(MatchingEngine& me) {
    me.applyOrder(this);
 }
 
-void an::AmendOrder::pack(an::BookRecord& rec) const {
+void an::AmendOrder::pack(an::SideRecord& rec) const {
     Order::pack(rec); rec.order_type= an::AMEND;
 }
 
@@ -302,4 +327,25 @@ std::string an::AmendOrder::to_string() const {
 }
 
 an::AmendOrder::~AmendOrder() { }
+
+
+
+std::string an::Response::to_string() const {
+    std::stringstream ss;
+    ss << message_->to_string() << DELIMITOR
+       << "response" << SEPERATOR << an::to_string(response_) << DELIMITOR
+       << "text" << SEPERATOR << text_; 
+    return ss.str();
+}
+
+void an::Response::applyOrder(MatchingEngine& me) {
+    throw OrderError("Response::applyOrder not implemented"); 
+}
+
+void an::Response::pack(an::SideRecord& rec) {
+    throw OrderError("Response::pack not implemented"); 
+}
+
+an::Response::~Response() { }
+
 
