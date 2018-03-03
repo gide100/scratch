@@ -17,6 +17,7 @@ int main() {
     an::Login       ord7( "Client2",an::ME);
     an::Response    res1( &ord1a, an::ACK, "OK");
     an::Response    res2( &ord1c, an::ERROR, "Error occurred");
+    an::TradeReport tr1( &ord1c, an::BUY, 5, 12.35);
     std::cout << " *** ORDERS ***" << std::endl;
     std::cout << ord1a << std::endl;
     std::cout << ord1b << std::endl;
@@ -29,6 +30,8 @@ int main() {
     std::cout << " *** RESPONSE ***" << std::endl;
     std::cout << res1 << std::endl;
     std::cout << res2 << std::endl;
+    std::cout << " *** TRADE REPORT ***" << std::endl;
+    std::cout << tr1 << std::endl;
     try {
         std::cout << " *** MAKE ***" << std::endl;
         an::Message* o10 = an::Message::makeOrder("type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50:price=92.0");
@@ -63,6 +66,7 @@ int main() {
     ord3.applyOrder(me);
     ord5.applyOrder(me);
     ord6.applyOrder(me);
+    ord2.applyOrder(me);
  
     std::cout << me.to_string() << std::endl;
 

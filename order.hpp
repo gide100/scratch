@@ -42,14 +42,12 @@ class Message {
     public:
         Message(location_t origin, location_t dest = ME) 
             : origin_(origin), destination_(dest), reverse_direction_(false) {}
-        virtual std::string to_string() const = 0;
 
+        virtual std::string to_string() const = 0;
         virtual ~Message() = 0; 
         
         // Factory and string parser
         static Message* makeOrder(const std::string& input);
-
-        virtual void applyOrder(MatchingEngine& me) = 0;
 
         const location_t& origin() const { return origin_; }
         const location_t& destination() const { return destination_; }
@@ -67,8 +65,6 @@ class Login : public Message {
         virtual std::string to_string() const;
 
         virtual ~Login(); 
-
-        virtual void applyOrder(MatchingEngine& me) ;
 };
 
 
@@ -77,12 +73,11 @@ class Order : public Message {
         Order(order_id_t id, location_t origin, location_t dest, symbol_t sym) 
              : Message(origin, dest), order_id_(id), symbol_(sym) //, origin_(origin), destination_(dest) 
              { }
+
         virtual std::string to_string() const = 0;
-
         virtual ~Order() = 0; 
-
         virtual void applyOrder(MatchingEngine& me) = 0;
-        virtual void pack(SideRecord& rec) const = 0;
+
         order_id_t orderId() const { return order_id_; }
         const symbol_t& symbol() const { return symbol_; }
     protected:
@@ -110,10 +105,11 @@ class LimitOrder : public Execution {
     public:
         LimitOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, shares_t s, price_t p) 
             : Execution(id, o, dest, sym, d, s), price_(p) {}
+
         virtual std::string to_string() const;
         virtual ~LimitOrder() ;   
-
         virtual void applyOrder(MatchingEngine& me) ;
+
         virtual void pack(SideRecord& rec) const ;
     protected:
         price_t price_;
@@ -124,10 +120,11 @@ class MarketOrder : public Execution {
     public:
         MarketOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, shares_t s) 
             : Execution(id,o,dest,sym,d,s) {}
+
         virtual std::string to_string() const;
         virtual ~MarketOrder() ;
-
         virtual void applyOrder(MatchingEngine& me) ;
+
         virtual void pack(SideRecord& rec) const ;
     protected:
 };
@@ -135,11 +132,10 @@ class MarketOrder : public Execution {
 class CancelOrder : public Order {
     public:
         CancelOrder(order_id_t id, location_t o, location_t dest, symbol_t sym) : Order(id, o, dest, sym) {}
+
         virtual std::string to_string() const;
         virtual ~CancelOrder() ;
-
         virtual void applyOrder(MatchingEngine& me) ;
-        virtual void pack(SideRecord& rec) const ;
     protected:
 };
 
@@ -155,11 +151,11 @@ class AmendOrder : public Order {
             : Order(id, o, dest, sym) {
             amend_.field = SHARES; amend_.shares = s;
         }
+
         virtual std::string to_string() const;
         virtual ~AmendOrder() ;
+        virtual void applyOrder(MatchingEngine& me) ;
 
-        virtual void applyOrder(MatchingEngine& me);
-        virtual void pack(SideRecord& rec) const;
         an::amend_t& amend() { return amend_; }
     protected:
         amend_t amend_;
@@ -179,15 +175,30 @@ class Response : public Message {
             }
             m->reverse_direction();
         }
+
         virtual std::string to_string() const;
         virtual ~Response();
-
-        virtual void applyOrder(MatchingEngine& me);
-        virtual void pack(SideRecord& rec); 
     protected:
         Message* message_;
         response_t response_;
         text_t text_;
+};
+
+class TradeReport : public Message {
+	public:
+		explicit TradeReport(Order* o, direction_t d, shares_t s, price_t p) 
+			: Message(o->destination(), o->origin()), orig_order_id_(o->orderId()), symbol_(o->symbol()), 
+              direction_(d), shares_(s), price_(p) {
+        } 
+
+        virtual std::string to_string() const;
+        virtual ~TradeReport();
+    protected:
+        order_id_t orig_order_id_; 
+        symbol_t symbol_;
+		direction_t direction_;
+        shares_t shares_;
+        price_t price_;
 };
 
 

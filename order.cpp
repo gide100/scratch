@@ -18,20 +18,12 @@ std::string an::Message::to_string() const {
 an::Message::~Message() { }
 
 
-void an::Login::applyOrder(MatchingEngine& me) {
-   throw OrderError("Login not appliable to matching engine");
-}
-
-void an::Order::pack(an::SideRecord& rec) const {
-   rec = DefaultSideRecord;
-   rec.id = order_id_;
-}
 
 std::string an::Login::to_string() const {
-    std::stringstream ss;
-    ss << "type" << SEPERATOR << "LOGIN" << DELIMITOR
+    std::stringstream os;
+    os << "type" << SEPERATOR << "LOGIN" << DELIMITOR
        << Message::to_string();
-    return ss.str();
+    return os.str();
 }
 
 an::Login::~Login() { }
@@ -225,7 +217,8 @@ an::Message* an::Message::makeOrder(const std::string& input) {
 
 
 void an::Execution::pack(an::SideRecord& rec) const {
-    Order::pack(rec);
+    rec = DefaultSideRecord;
+    rec.id = order_id_;
     rec.direction = direction_;
     rec.shares = shares_;
 }
@@ -283,13 +276,8 @@ an::MarketOrder::~MarketOrder() { }
 
 
 
-
 void an::CancelOrder::applyOrder(MatchingEngine& me) {
    me.applyOrder(this);
-}
-
-void an::CancelOrder::pack(an::SideRecord& rec) const {
-   Order::pack(rec); rec.order_type= an::CANCEL;
 }
 
 std::string an::CancelOrder::to_string() const {
@@ -304,10 +292,6 @@ an::CancelOrder::~CancelOrder() { }
 
 void an::AmendOrder::applyOrder(MatchingEngine& me) {
    me.applyOrder(this);
-}
-
-void an::AmendOrder::pack(an::SideRecord& rec) const {
-    Order::pack(rec); rec.order_type= an::AMEND;
 }
 
 std::string an::AmendOrder::to_string() const {
@@ -331,21 +315,28 @@ an::AmendOrder::~AmendOrder() { }
 
 
 std::string an::Response::to_string() const {
-    std::stringstream ss;
-    ss << message_->to_string() << DELIMITOR
+    std::ostringstream os;
+    os << message_->to_string() << DELIMITOR
        << "response" << SEPERATOR << an::to_string(response_) << DELIMITOR
        << "text" << SEPERATOR << text_; 
-    return ss.str();
-}
-
-void an::Response::applyOrder(MatchingEngine& me) {
-    throw OrderError("Response::applyOrder not implemented"); 
-}
-
-void an::Response::pack(an::SideRecord& rec) {
-    throw OrderError("Response::pack not implemented"); 
+    return os.str();
 }
 
 an::Response::~Response() { }
 
+
+
+std::string an::TradeReport::to_string() const {
+    std::ostringstream os;
+    os << "type" << SEPERATOR << "TRADE" << DELIMITOR
+       << Message::to_string() << DELIMITOR
+       << "orig_order_id" << SEPERATOR << orig_order_id_ << DELIMITOR
+       << "symbol" << SEPERATOR << symbol_ << DELIMITOR
+       << "direction" << SEPERATOR << an::to_string(direction_) << DELIMITOR 
+       << "shares" << SEPERATOR << shares_ << DELIMITOR
+       << "price" << SEPERATOR << price_ ;
+    return os.str();
+}
+
+an::TradeReport::~TradeReport() { }
 
