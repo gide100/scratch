@@ -98,37 +98,37 @@ an::Message* an::Message::makeOrder(const std::string& input) {
         if (res.first == "type") {
             myType = res.second;
             myFlags.set(Type);
-	    used = true;
+	        used = true;
         }
         if (res.first == "id") {
             myId = std::stoull(res.second);
             myFlags.set(Id);
-	    used = true;
+	        used = true;
         }
         if (res.first == "origin") {
             myOrigin = res.second;
             myFlags.set(Origin);
-	    used = true;
+	        used = true;
         }
         if (res.first == "destination") {
             myDestination = res.second;
             myFlags.set(Destination);
-	    used = true;
+	        used = true;
         }
         if (res.first == "symbol") {
             mySymbol = res.second;
             myFlags.set(Symbol);
-	    used = true;
+	        used = true;
         }
         if (res.first == "direction") {
             if (res.second == "BUY") {
                 myDirection = an::BUY;
                 myFlags.set(Direction);
-		used = true;
+		        used = true;
             } else if (res.second == "SELL") {
                 myDirection = an::SELL;
                 myFlags.set(Direction);
-		used = true;
+		        used = true;
             } else {
                 std::stringstream ss; 
                 ss << "Invalid direction [" << res.second << "]";
@@ -146,12 +146,12 @@ an::Message* an::Message::makeOrder(const std::string& input) {
             }
             myShares = myLong;
             myFlags.set(Shares);
-	    used = true;
+	        used = true;
         }
         if (res.first == "price") {
             myPrice = std::stod(res.second);
             myFlags.set(Price);
-	    used = true;
+	        used = true;
         }
         if (!used) {
             std::stringstream ss; 

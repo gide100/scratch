@@ -143,7 +143,7 @@ class AmendOrder : public Order {
     public:
         explicit AmendOrder(order_id_t id, location_t o, location_t dest, symbol_t sym) 
             : Order(id, o, dest, sym) { 
-		amend_.field = NONE; amend_.price=0.0; 
+                amend_.field = NONE; amend_.price=0.0; 
         }
         AmendOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, price_t p) 
             : Order(id, o, dest, sym), amend_({PRICE, {.price = p}}) { }
@@ -185,9 +185,9 @@ class Response : public Message {
 };
 
 class TradeReport : public Message {
-	public:
-		explicit TradeReport(Order* o, direction_t d, shares_t s, price_t p) 
-			: Message(o->destination(), o->origin()), orig_order_id_(o->orderId()), symbol_(o->symbol()), 
+    public:
+        explicit TradeReport(Order* o, direction_t d, shares_t s, price_t p) 
+            : Message(o->destination(), o->origin()), orig_order_id_(o->orderId()), symbol_(o->symbol()), 
               direction_(d), shares_(s), price_(p) {
         } 
 
@@ -196,7 +196,7 @@ class TradeReport : public Message {
     protected:
         order_id_t orig_order_id_; 
         symbol_t symbol_;
-		direction_t direction_;
+        direction_t direction_;
         shares_t shares_;
         price_t price_;
 };
