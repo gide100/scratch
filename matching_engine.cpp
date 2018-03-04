@@ -14,24 +14,24 @@ an::MatchingEngine::MatchingEngine(const an::location_t& exchange, SecurityDatab
 an::MatchingEngine::~MatchingEngine() { }
 
 std::string an::MatchingEngine::to_string() const {
-	std::ostringstream os;
+    std::ostringstream os;
     for (const auto& book: book_) {
-		os << boost::format("[%1$s]") % book.symbol << std::endl
-		   << "    Id Seq  V Side Time               Shares Price    Shares Time               Side" << std::endl 
-		   << "------+----+-+----+------------------+------+--------+------+------------------+----" << std::endl ;
-		for (const auto& rec: book.sell) {
-		   os << boost::format("%1$6d %2$4d %3$1c ") % rec.id % rec.seq % (rec.visible ? '*' : ' ')
-			  << boost::format("%1$30c ") % ' '
-			  << boost::format("%1$8.3f ") % rec.price
-			  << boost::format("%1$6d %2$18s %3$4s") % rec.shares % sinceToString(rec.time) % an::to_string(rec.direction)
-			  << std::endl;
-		}
-		for (const auto& rec: book.buy) {
-		   os << boost::format("%1$6d %2$4d %3$1c ") % rec.id % rec.seq % (rec.visible ? '*' : ' ')
-			  << boost::format("%1$4s %2$18s %3$6d ") % an::to_string(rec.direction) % sinceToString(rec.time) % rec.shares 
-			  << boost::format("%1$8.3f") % rec.price
-			  << std::endl;
-		}
+        os << boost::format("[%1$s]") % book.symbol << std::endl
+           << "    Id Seq  V Side Time               Shares Price    Shares Time               Side" << std::endl 
+           << "------+----+-+----+------------------+------+--------+------+------------------+----" << std::endl ;
+        for (const auto& rec: book.sell) {
+           os << boost::format("%1$6d %2$4d %3$1c ") % rec.id % rec.seq % (rec.visible ? '*' : ' ')
+              << boost::format("%1$30c ") % ' '
+              << boost::format("%1$8.3f ") % rec.price
+              << boost::format("%1$6d %2$18s %3$4s") % rec.shares % sinceToString(rec.time) % an::to_string(rec.direction)
+              << std::endl;
+        }
+        for (const auto& rec: book.buy) {
+           os << boost::format("%1$6d %2$4d %3$1c ") % rec.id % rec.seq % (rec.visible ? '*' : ' ')
+              << boost::format("%1$4s %2$18s %3$6d ") % an::to_string(rec.direction) % sinceToString(rec.time) % rec.shares 
+              << boost::format("%1$8.3f") % rec.price
+              << std::endl;
+        }
     }
     return os.str();
 }
@@ -110,7 +110,7 @@ an::SideRecord* an::MatchingEngine::lookupSymbol(const symbol_t& symbol, order_i
         std::cout << "LOOKUP=" << symbol << " idx=" << symbol_idx << std::endl;
         auto search = book_[symbol_idx].active_order.find(id);
         if (search != book_[symbol_idx].active_order.end()) {
-	    Side::const_iterator it ;
+        Side::const_iterator it ;
             if (search->second == an::BUY) {
                 it = std::find_if(book_[symbol_idx].buy.cbegin(),  book_[symbol_idx].buy.cend(),  MatchOrderId(id)); 
                 if (it != book_[symbol_idx].buy.cend()) {
