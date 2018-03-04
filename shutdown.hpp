@@ -8,20 +8,20 @@
 
 class DoWait {
     public:
-        DoWait(boost::asio::deadline_timer* timer, std::atomic<int>* count) : timer_(timer), count_(count), wait_time_(1) {}
+        DoWait(boost::asio::deadline_timer& timer, std::atomic<int>& count) : timer_(timer), count_(count), wait_time_(1) {}
         void operator()(const boost::system::error_code& ec) {
-            std::cerr << "[DoWait] iteration = " << *count_ << std::endl;
-            if (!ec && *count_ > 0) {
-                ++(*count_);
-                timer_->expires_at(timer_->expires_at() + wait_time_);
-                timer_->async_wait( DoWait(timer_, count_) );
+            std::cerr << "[DoWait] iteration = " << count_ << std::endl;
+            if (!ec && count_ > 0) {
+                ++count_;
+                timer_.expires_at(timer_.expires_at() + wait_time_);
+                timer_.async_wait( DoWait(timer_, count_) );
             } else {
                 // DO NOTHING, don't resubmit to queue.
             }
         }
     private:
-        boost::asio::deadline_timer* timer_;
-        std::atomic<int>* count_;
+        boost::asio::deadline_timer& timer_;
+        std::atomic<int>& count_;
         boost::posix_time::seconds wait_time_;
 };
 
@@ -29,20 +29,20 @@ class DoWait {
 class Shutdown {
     public:
         Shutdown()
-              : signal_not_received_(1),
+            : signal_not_received_(1),
               signalContext_(),
               signals_(signalContext_, SIGINT, SIGTERM, SIGQUIT),
               doWaitTimer_(signalContext_, boost::posix_time::seconds(1)) {
             std::cout<<"constructor"<<std::endl;
             signals_.add(SIGILL);
             signals_.add(SIGHUP);
-            
+
             // Setup timer and signals
             signals_.async_wait( [&] (const boost::system::error_code& ec, int s) { handleStop(ec, s); } );
-            doWaitTimer_.async_wait( DoWait(&doWaitTimer_, &signal_not_received_) );
+            doWaitTimer_.async_wait( DoWait(doWaitTimer_, signal_not_received_) );
             signalThread_ = std::thread( [&]() { signalContext_.run(); } );
-              
         }
+
         virtual ~Shutdown() {
             std::cout<<"~dtor"<<std::endl;
             signals_.cancel();
