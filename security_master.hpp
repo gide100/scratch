@@ -83,11 +83,11 @@ class SecurityDatabase {
             return securities_;
         }
         std::size_t find(const symbol_t& symbol) const {
-             auto search = symbol_loc_.find(symbol);
-             if (search != symbol_loc_.end()) {
-		 return search->second;
-             }
-             return std::numeric_limits<std::size_t>::max();
+            auto search = symbol_loc_.find(symbol);
+            if (search != symbol_loc_.end()) {
+                return search->second;
+            }
+            return std::numeric_limits<std::size_t>::max();
         }
     private:
         void updateMaps() ;

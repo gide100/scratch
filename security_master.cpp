@@ -106,7 +106,8 @@ void an::TickLadder::loadData(const std::string& filename) {
         tt.add(ttr);
         prev_id = id;
     }
+    // Add the last id in list
     if (prev_id !=0) {
-	addTickLadder(id, tt);
+        addTickLadder(id, tt);
     }
 }
