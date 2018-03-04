@@ -11,32 +11,31 @@
 
 void print(const boost::system::error_code& /*e*/,
     boost::asio::deadline_timer* t, int* count) {
-  std::cerr << "[Timer Callback Func] Iteration = " << *count << std::endl; 
-  if (*count > 0) {
-    //std::cout << *count << std::endl;
-    ++(*count);
+    std::cerr << "[Timer Callback Func] Iteration = " << *count << std::endl; 
+    if (*count > 0) {
+        //std::cout << *count << std::endl;
+        ++(*count);
 
-    t->expires_at(t->expires_at() + boost::posix_time::seconds(1));
-    t->async_wait(boost::bind(print,
-          boost::asio::placeholders::error, t, count));
-  }
+        t->expires_at(t->expires_at() + boost::posix_time::seconds(1));
+        t->async_wait(boost::bind(print,boost::asio::placeholders::error, t, count)); 
+    }
 }
 
 class DoWait {
     public:
         DoWait(boost::asio::deadline_timer* timer, std::atomic<int>* count) : timer_(timer), count_(count) {}
         void operator()(const boost::system::error_code& ec) {
-	    std::cerr << "[DoWait] iteration = " << *count_ << std::endl; 
-	    if (!ec && *count_ > 0) {
-		++(*count_);
+            std::cerr << "[DoWait] iteration = " << *count_ << std::endl; 
+            if (!ec && *count_ > 0) {
+                ++(*count_);
                 timer_->expires_at(timer_->expires_at() + boost::posix_time::seconds(1));
                 timer_->async_wait( DoWait(timer_, count_) );
-	    } else {
-		// DO NOTHING, don't resubmit to queue.
-	    }
-	}
+            } else {
+                // DO NOTHING, don't resubmit to queue.
+            }
+        }
     private:
-	boost::asio::deadline_timer* timer_;
+        boost::asio::deadline_timer* timer_;
         std::atomic<int>* count_;
 };
 
@@ -49,25 +48,25 @@ void timer_expired(std::string id) {
 void callback(const boost::system::error_code& e, boost::asio::deadline_timer* pt, int* count) {
     std::cerr << "[Timer Callback Func] Iteration = " << *count << std::endl; 
     if (*count > 0) {
-	++(*count);
-	//** Updates the absolute timer target time (when the callback function will be called again)
-	pt->expires_at(pt->expires_at() + boost::posix_time::seconds(1)); 
-	//pt->expires_from_now(boost::posix_time::milliseconds(1123)); 
-	//** Reschedule a new job for the timer 
-	//pt.async_wait(boost::bind(callback_func, boost::asio::placeholders::error, pt, count));
-	pt->async_wait( [&](const boost::system::error_code& ec) { callback(ec, pt, count); } );
-	//pt->async_wait(boost::bind(callback, boost::asio::placeholders::error, pt, count));
+        ++(*count);
+        //** Updates the absolute timer target time (when the callback function will be called again)
+        pt->expires_at(pt->expires_at() + boost::posix_time::seconds(1)); 
+        //pt->expires_from_now(boost::posix_time::milliseconds(1123)); 
+        //** Reschedule a new job for the timer 
+        //pt.async_wait(boost::bind(callback_func, boost::asio::placeholders::error, pt, count));
+        pt->async_wait( [&](const boost::system::error_code& ec) { callback(ec, pt, count); } );
+        //pt->async_wait(boost::bind(callback, boost::asio::placeholders::error, pt, count));
     }
 }
 
 void callback2(boost::asio::deadline_timer* pt, int* pcont) {
     std::cout << "[Timer Callback Func] Iteration = " << *pcont << std::endl; 
     if (*pcont) {
-	//** Updates the absolute timer target time (when the callback function will be called again)
-	pt->expires_from_now(boost::posix_time::seconds(1)); 
-	//** Reschedule a new job for the timer 
-	//pt.async_wait(boost::bind(callback_func, boost::asio::placeholders::error, pt, pcont));
-	pt->async_wait( [&](auto ... vn) { callback2(pt, pcont); } );
+        //** Updates the absolute timer target time (when the callback function will be called again)
+        pt->expires_from_now(boost::posix_time::seconds(1)); 
+        //** Reschedule a new job for the timer 
+        //pt.async_wait(boost::bind(callback_func, boost::asio::placeholders::error, pt, pcont));
+        pt->async_wait( [&](auto ... vn) { callback2(pt, pcont); } );
     }
 }
 
@@ -93,7 +92,7 @@ int main() {
     timer3.async_wait( DoWait(&timer3, &myCount) );
     // 2) Lambda
 //    timer3.async_wait(  [&](const boost::system::error_code& ec) {  
-//					    callback(ec, &timer3,  &myCount);
+//                        callback(ec, &timer3,  &myCount);
 //               n                         } );
     // 3) Boost bind
     //timer3.async_wait(boost::bind(print,
