@@ -25,9 +25,7 @@ class asio_generic_server {
     void start_server(uint16_t port);
     void wait_for(); // Join
   private:
-    void handle_new_connection( 
-      shared_handler_t handler, 
-      boost::system::error_code const & error );
+    void handle_new_connection(shared_handler_t handler, boost::system::error_code const& error);
     
     int thread_count_;
     std::vector<std::thread> thread_pool_;
@@ -80,8 +78,8 @@ class chat_handler : public std::enable_shared_from_this<chat_handler> {
     void packet_send_done(boost::system::error_code const& error);
     
     void queue_message(std::string message) {
-      bool write_in_progress = !send_packet_queue.empty(); // Write in progress, wrapped in strand
-      send_packet_queue.push_back(std::move(message));
+      bool write_in_progress = !send_packet_queue_.empty(); // Write in progress, wrapped in strand
+      send_packet_queue_.push_back(std::move(message));
       
       if(!write_in_progress) {
         start_packet_send();
@@ -92,7 +90,7 @@ class chat_handler : public std::enable_shared_from_this<chat_handler> {
     boost::asio::ip::tcp::socket socket_;
     boost::asio::io_context::strand write_strand_; // Prevents multiple writes to port
     boost::asio::streambuf in_packet_;
-    std::deque<std::string> send_packet_queue;
+    std::deque<std::string> send_packet_queue_;
 };
 
 
@@ -171,7 +169,7 @@ void chat_handler::read_packet_done( boost::system::error_code const& error, std
   std::string packet_string;
   stream >> packet_string;
 
-  std::cout << "GOT: "<< packet_string << std::endl; //???
+  std::cout << bytes_transferred << " GOT: "<< packet_string << std::endl; //???
   // do something with it
   if (packet_string == "quit") {
      std::cout << "QUIT!"<< std::endl; //???
@@ -182,18 +180,18 @@ void chat_handler::read_packet_done( boost::system::error_code const& error, std
 
 
 void chat_handler::start_packet_send() {
-  send_packet_queue.front() += "\0";
-  boost::asio::async_write( socket_, 
-      boost::asio::buffer(send_packet_queue.front()), // Pass location in deque
-           write_strand_.wrap( 
-             [me=shared_from_this()]( boost::system::error_code const& ec, std::size_t) {
-                me->packet_send_done(ec);
-              }
-           )
-         );
+	send_packet_queue_.front() += "\0";
+	boost::asio::async_write( socket_, 
+		boost::asio::buffer(send_packet_queue_.front()), // Pass location in deque
+			write_strand_.wrap( 
+				[me=shared_from_this()]( boost::system::error_code const& ec, std::size_t) {
+					me->packet_send_done(ec);
+				}
+			)
+	);
   
 //   boost::asio::async_write( socket_, 
-//       boost::asio::buffer(send_packet_queue.front()), 
+//       boost::asio::buffer(send_packet_queue_.front()), 
 //         boost::asio::bind_executor(write_strand_,  // aka wrap
 //               [me=shared_from_this()]( boost::system::error_code const& ec, std::size_t) {
 //                 me->packet_send_done(ec);
@@ -204,12 +202,12 @@ void chat_handler::start_packet_send() {
 
 
 void chat_handler::packet_send_done(boost::system::error_code const& error) {
-  if(!error) {
-    send_packet_queue.pop_front(); // Remove from deque
-    if(!send_packet_queue.empty()) {  // More work? do it
-      start_packet_send();
-    }
-  }
+	if(!error) {
+		send_packet_queue_.pop_front(); // Remove from deque
+		if(!send_packet_queue_.empty()) {  // More work? do it
+			start_packet_send();
+		}
+	}
 }
 
 
