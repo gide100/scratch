@@ -1,4 +1,5 @@
 #include <vector>
+#include <set>
 #include <deque>
 #include <string>
 #include <exception>
@@ -11,15 +12,57 @@
 // http://www.boost.org/doc/libs/1_66_0/doc/html/boost_asio/net_ts.html
 //
 //
+//
+
+// *** BROADCAST to all CLients ***
+typedef std::string msg_t;
+typedef std::deque<msg_t> chat_message_queue;
+
 
 // *** SERVER ***
 template <typename ConnectionHandler>
 class asio_generic_server {
     // Shared pointer to the type of the connection handler
     using shared_handler_t = std::shared_ptr<ConnectionHandler>; 
+
+    class ClientBroadcast {
+        public:
+            ClientBroadcast(std::size_t max_recent_msgs = 100) : max_recent_msgs_(max_recent_msgs) {
+                recent_msgs_.push_back("Welcome\n");
+            }
+            ~ClientBroadcast() { }
+
+            void join(shared_handler_t participant) {
+                participants_.insert(participant);
+                for (const msg_t& msg: recent_msgs_) {
+                    std::cout << "ClientBroadcast::Join " << msg << " " << participants_.size() << std::endl;
+                    participant->send(msg);
+                }
+            }
+
+            void leave(shared_handler_t participant) {
+                participants_.erase(participant);
+            }
+
+            void deliver(const msg_t& msg) {
+                recent_msgs_.push_back(msg);
+                while (recent_msgs_.size() > max_recent_msgs_) {
+                    recent_msgs_.pop_front();
+                }
+
+                for (auto participant: participants_) {
+                    participant->send(msg);
+                    std::cout << "ClientBroadcast::deliver " << msg << participants_.size() <<  std::endl;
+                }
+            }
+        private:
+            std::set<shared_handler_t> participants_;
+            std::size_t max_recent_msgs_;
+            chat_message_queue recent_msgs_;
+    };
     public:
-        asio_generic_server(int thread_count=1)
-            : thread_count_(thread_count), acceptor_(io_context_) {
+        asio_generic_server(int thread_count=1, long max_msgs=100) // TODO
+            :  thread_count_(thread_count), acceptor_(io_context_), broadcast_(max_msgs) {
         }
 
         void start_server(uint16_t port);
@@ -31,7 +74,11 @@ class asio_generic_server {
         std::vector<std::thread> thread_pool_;
         boost::asio::io_context io_context_; // Server
         boost::asio::ip::tcp::acceptor acceptor_; // Listening
+        ClientBroadcast broadcast_;
 };
+
+
+
 
 
 // CRTP allows us to inject behaviour to get shared pointer to self at any time
@@ -54,6 +101,7 @@ class chat_handler : public std::enable_shared_from_this<chat_handler> {
         // Can't write to multiple times to the send.
         // Post to queue the work to get done.
         void send(std::string msg) {
+            std::cout << "chat_handler::send " << msg << std::endl;
             context_.post( 
                 write_strand_.wrap(
                     [me=shared_from_this(),msg]() {
@@ -140,6 +188,8 @@ void asio_generic_server<ConnectionHandler>::handle_new_connection(
 
     // Create new handler for next connnection that will come in.
     auto new_handler = std::make_shared<ConnectionHandler>(io_context_);
+    broadcast_.join(new_handler);
+    broadcast_.deliver("HERE\n");
 
     // Start accept with myself
     acceptor_.async_accept(
@@ -147,6 +197,7 @@ void asio_generic_server<ConnectionHandler>::handle_new_connection(
             handle_new_connection(new_handler,ec);
         }
     );
+    broadcast_.deliver("NEW CLIENT\n");
 }
 
 
@@ -164,17 +215,21 @@ void chat_handler::read_packet() {
 
 
 void chat_handler::read_packet_done( boost::system::error_code const& error, std::size_t bytes_transferred ) {
-    if (error) { return; }
+    if (error) { 
+        //TODO
+        return; 
+    }
 
     std::istream stream(&in_packet_);
     std::string packet_string;
     std::getline(stream >> std::ws, packet_string); // Read whole line including spaces
     //stream >> packet_string;
 
-    std::cout << bytes_transferred << " GOT: "<< packet_string << std::endl; //TODO
+    std::cout << "port=" << socket_.remote_endpoint() << " bytes=" << bytes_transferred << " GOT: "<< packet_string << std::endl; //TODO
     // do something with it
     if (packet_string == "quit") {
-        std::cout << "QUIT!"<< std::endl; //TODO
+        send("QUIT"); send("\n"); //TODO - remove echo
+        std::cout << "QUIT!" << std::endl; //TODO
     } else {
         send(packet_string); send("\n"); //TODO - remove echo
         read_packet();  
@@ -184,6 +239,7 @@ void chat_handler::read_packet_done( boost::system::error_code const& error, std
 
 void chat_handler::start_packet_send() {
     send_packet_queue_.front() += "\0";
+    std::cout << "chat_handler::start_packet_send " << send_packet_queue_.front() << std::endl;
     boost::asio::async_write( socket_, 
         boost::asio::buffer(send_packet_queue_.front()), // Pass location in deque
             write_strand_.wrap( 
@@ -210,6 +266,8 @@ void chat_handler::packet_send_done(boost::system::error_code const& error) {
         if(!send_packet_queue_.empty()) {  // More work? do it
             start_packet_send();
         }
+    } else {
+        // TODO
     }
 }
 
