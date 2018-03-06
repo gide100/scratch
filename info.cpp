@@ -304,7 +304,8 @@ void chat_handler::packet_send_done(boost::system::error_code const& error) {
             start_packet_send();
         }
     } else {
-        std::cout << "ERROR chat_handler::packet_send_done " << boost::system::system_error(error).what() << std::endl;
+        std::cout << "ERROR chat_handler::packet_send_done " 
+                  << boost::system::system_error(error).what() << std::endl;
     }
 }
 
