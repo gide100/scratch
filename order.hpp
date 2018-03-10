@@ -11,7 +11,12 @@ namespace an {
 using std::runtime_error; 
 class OrderError : public runtime_error {
     public:
-        OrderError(const std::string& msg) : runtime_error(msg) { }
+        explicit OrderError(const std::string& msg) : runtime_error(msg), origin_() { }
+        explicit OrderError(const std::string& msg, location_t& origin) 
+            : runtime_error(msg), origin_(origin) { }
+        bool haveOrigin() {  return !origin_.empty(); }
+    protected:
+        location_t origin_;
 };
  
 typedef enum { NONE, PRICE, SHARES } field_t;
@@ -96,6 +101,8 @@ class Execution : public Order {
 
         virtual void applyOrder(MatchingEngine& me) = 0;
         virtual void pack(SideRecord& rec) const = 0;
+
+        virtual bool amend(amend_t) = 0;
     protected:
         direction_t direction_;
         shares_t shares_;
@@ -111,6 +118,7 @@ class LimitOrder : public Execution {
         virtual void applyOrder(MatchingEngine& me) ;
 
         virtual void pack(SideRecord& rec) const ;
+        virtual bool amend(amend_t);
     protected:
         price_t price_;
 };
@@ -126,6 +134,7 @@ class MarketOrder : public Execution {
         virtual void applyOrder(MatchingEngine& me) ;
 
         virtual void pack(SideRecord& rec) const ;
+        virtual bool amend(amend_t);
     protected:
 };
 
@@ -170,11 +179,21 @@ class Response : public Message {
             if (m == nullptr) {
                 throw OrderError("nullptr in Response Message");
             }
-            if ((text_.find(':')!=text_t::npos) || (text_.find('=')!=text_t::npos)) {
-                throw OrderError("Cannot have [:|=] in Response text");
+            if ((text_.find(':')!=text_t::npos) || (text_.find('=')!=text_t::npos) || 
+                (text_.find('\n')!=text_t::npos)) {
+                throw OrderError("Cannot have [:|=\\n] in Response text");
             }
             m->reverse_direction();
         }
+        explicit Response(location_t origin, response_t response=ERROR, text_t text = "")
+             : Message(origin,ME), message_(nullptr), response_(response), text_(text) {
+            if ((text_.find(':')!=text_t::npos) || (text_.find('=')!=text_t::npos) || 
+                (text_.find('\n')!=text_t::npos)) {
+                throw OrderError("Cannot have [:|=\\n] in Response text");
+            }
+            reverse_direction();
+        }
+
 
         virtual std::string to_string() const;
         virtual ~Response();

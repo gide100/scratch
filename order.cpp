@@ -234,9 +234,8 @@ std::string an::Execution::to_string() const {
 an::Execution::~Execution() { }
 
 
-
 void an::LimitOrder::applyOrder(MatchingEngine& me) {
-   me.applyOrder(this);
+    me.applyOrder(std::move(std::unique_ptr<LimitOrder>(this)));
 }
 
 void an::LimitOrder::pack(an::SideRecord& rec) const {
@@ -246,18 +245,31 @@ void an::LimitOrder::pack(an::SideRecord& rec) const {
 
 
 std::string an::LimitOrder::to_string() const {
-    std::stringstream ss;
-    ss << "type" << SEPERATOR << "LIMIT" << DELIMITOR << Execution::to_string() << DELIMITOR 
-       << "price" << SEPERATOR << price_;
-    return ss.str();
+    std::stringstream os;
+    os << "type" << SEPERATOR << "LIMIT" << DELIMITOR << Execution::to_string() << DELIMITOR 
+       << "price" << SEPERATOR << std::fixed << std::setprecision(1) << price_;
+    return os.str();
 }
 an::LimitOrder::~LimitOrder() { }
 
 
+bool an::LimitOrder::amend(amend_t a) {
+    bool ok = true;
+    switch (a.field) {                                                                
+        case NONE:   break;                                                               
+        case PRICE:  price_ = a.price;                                                         
+                     break;                                                               
+        case SHARES: shares_ = a.shares; break;                                
+        default:                                                                          
+            ok = false;
+            assert(false && "LimitOrder::amend invalid");                            
+    }                                                         
+    return ok;
+}
 
 
 void an::MarketOrder::applyOrder(MatchingEngine& me) {
-   me.applyOrder(this);
+    me.applyOrder(std::move(std::unique_ptr<MarketOrder>(this)));
 }
 
 void an::MarketOrder::pack(an::SideRecord& rec) const {
@@ -274,10 +286,23 @@ std::string an::MarketOrder::to_string() const {
 }
 an::MarketOrder::~MarketOrder() { }
 
+bool an::MarketOrder::amend(amend_t a) {                                                                       
+    bool ok = true;
+    switch (a.field) {                                                                                    
+        case NONE:   break;                                                                                   
+        case PRICE:  ok = false; break;                                                                                   
+        case SHARES: shares_ = a.shares; break;                                                               
+        default:                                                                                              
+            ok = false;
+            assert(false && "MarketOrder::amend invalid");                                              
+    }                                                                                                         
+    return ok;
+} 
+
 
 
 void an::CancelOrder::applyOrder(MatchingEngine& me) {
-   me.applyOrder(this);
+    me.applyOrder(std::move(std::unique_ptr<CancelOrder>(this)));
 }
 
 std::string an::CancelOrder::to_string() const {
@@ -291,23 +316,26 @@ an::CancelOrder::~CancelOrder() { }
 
 
 void an::AmendOrder::applyOrder(MatchingEngine& me) {
-   me.applyOrder(this);
+    me.applyOrder(std::move(std::unique_ptr<AmendOrder>(this)));
 }
 
 std::string an::AmendOrder::to_string() const {
-    std::stringstream ss;
-    ss << "type" << SEPERATOR << "AMEND" << DELIMITOR << Order::to_string();
+    std::ostringstream os;
+    os << "type" << SEPERATOR << "AMEND" << DELIMITOR << Order::to_string();
     if (amend_.field != NONE) {
-       ss << DELIMITOR << amend_.get_field_name() << SEPERATOR ;
+        os << DELIMITOR << amend_.get_field_name() << SEPERATOR ;
         switch (amend_.field) {
-            case NONE: ss << "none"; break;
-            case PRICE: ss << amend_.price; break;
-            case SHARES: ss << amend_.shares; break;
+            case NONE:   
+                os << "none"; break;
+            case PRICE:  
+                os << std::fixed << std::setprecision(1) << amend_.price; break;
+            case SHARES: 
+                os << amend_.shares; break;
             default:
-                ss << "unknown:field_t";
+                os << "unknown:field_t";
         }
     }
-    return ss.str();
+    return os.str();
 }
 
 an::AmendOrder::~AmendOrder() { }
@@ -316,9 +344,15 @@ an::AmendOrder::~AmendOrder() { }
 
 std::string an::Response::to_string() const {
     std::ostringstream os;
-    os << message_->to_string() << DELIMITOR
-       << "response" << SEPERATOR << an::to_string(response_) << DELIMITOR
-       << "text" << SEPERATOR << text_; 
+    if (message_ != nullptr) {
+        os << message_->to_string() << DELIMITOR
+           << "response" << SEPERATOR << an::to_string(response_) << DELIMITOR
+           << "text" << SEPERATOR << text_; 
+    } else {
+        os << Message::to_string() << DELIMITOR
+           << "response" << SEPERATOR << an::to_string(response_) << DELIMITOR
+           << "text" << SEPERATOR << text_; 
+    }
     return os.str();
 }
 
@@ -334,7 +368,7 @@ std::string an::TradeReport::to_string() const {
        << "symbol" << SEPERATOR << symbol_ << DELIMITOR
        << "direction" << SEPERATOR << an::to_string(direction_) << DELIMITOR 
        << "shares" << SEPERATOR << shares_ << DELIMITOR
-       << "price" << SEPERATOR << price_ ;
+       << "price" << SEPERATOR <<  std::fixed << std::setprecision(1) << price_ ;
     return os.str();
 }
 
