@@ -77,6 +77,8 @@ struct tick_table_t {
 
 class SecurityDatabase {
     public:
+        static const std::size_t npos = std::numeric_limits<std::size_t>::max();
+
         SecurityDatabase(location_t exchange) : exchange_(exchange) {}
         void loadData(const std::string& filename);
         const std::vector<security_record_t>& securities() const {
@@ -87,7 +89,7 @@ class SecurityDatabase {
             if (search != symbol_loc_.end()) {
                 return search->second;
             }
-            return std::numeric_limits<std::size_t>::max();
+            return npos;
         }
     private:
         void updateMaps() ;
