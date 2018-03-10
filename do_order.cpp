@@ -11,16 +11,16 @@ std::unique_ptr<T> make_unique_ptr(T* ptr) {
 }
 
 int main() {
-    auto mkt01z = std::make_unique<an::MarketOrder>(  1,"Client1", an::ME,"APPL",an::BUY,10);
-    auto mkt01a = std::make_unique<an::MarketOrder>(  1,"Client1", an::ME,"APPL",an::BUY,10);
-    auto mkt02a = std::make_unique<an::MarketOrder>(  2,"Client2", an::ME,"APPL",an::SELL,10);
     auto lim01a = std::make_unique<an::LimitOrder >(  3,"Client2", an::ME,"APPL",an::SELL,10,12.23);
     auto lim02a = std::make_unique<an::LimitOrder >(  4,"Client2", an::ME,"APPL",an::BUY,10,12.23);
     auto lim03a = std::make_unique<an::LimitOrder >( 11,"Client2", an::ME,"IBM",an::SELL,10,5.12);
+    auto mkt01a = std::make_unique<an::MarketOrder>(  1,"Client1", an::ME,"APPL",an::BUY,10);
+    auto mkt02a = std::make_unique<an::MarketOrder>(  2,"Client2", an::ME,"APPL",an::SELL,10);
+    auto mkt01z = std::make_unique<an::MarketOrder>(100,"Client1", an::ME,"APPL",an::BUY,10);
     auto can01a = std::make_unique<an::CancelOrder>(  4,"Client1", an::ME,"APPL");
     auto amd01a = std::make_unique<an::AmendOrder >( 11,"Client2", an::ME,"APPL");
     auto amd02a = std::make_unique<an::AmendOrder >(  3,"Client2", an::ME,"APPL",123.45);
-    auto amd03a = std::make_unique<an::AmendOrder >(  2,"Client2", an::ME,"APPL",an::shares_t(20));
+    auto amd03a = std::make_unique<an::AmendOrder >(  3,"Client2", an::ME,"APPL",an::shares_t(20));
     auto log01a = std::make_unique<an::Login      >(    "Client2", an::ME);
     auto res01a = std::make_unique<an::Response   >( mkt01a.get(), an::ACK, "OK");
     auto res02a = std::make_unique<an::Response   >( lim01a.get(), an::ERROR, "Error occurred");
