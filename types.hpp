@@ -11,9 +11,12 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <queue>
 #include <deque>
 #include <set>
 #include <exception>
+#include <cmath>
+#include <memory>
 #include "date.h"
 
 namespace an {
@@ -25,7 +28,7 @@ typedef std::uint64_t sequence_t;
 typedef double price_t;
 enum direction_t { BUY, SELL };
 enum order_t { LIMIT, MARKET, CANCEL, AMEND };
-enum response_t { ACK, REJECT, UNKNOWN, ERROR }; 
+enum response_t { ACK, COMPLETE, REJECT, CANCELLED, UNKNOWN, ERROR }; 
 typedef std::string text_t;
 
 typedef std::string symbol_t;
@@ -54,15 +57,18 @@ inline const char* to_string(direction_t d) {
 
 inline const char* to_string(response_t r) {
      switch (r) {
-        case ACK: return "ACK";
-        case REJECT: return "REJECT";
-        case UNKNOWN: return "UNKNOWN";
-        case ERROR: return "ERROR";
+        case ACK:       return "ACK";
+        case COMPLETE:  return "COMPLETE";
+        case REJECT:    return "REJECT";
+        case CANCELLED: return "CANCELLED";
+        case UNKNOWN:   return "UNKNOWN";
+        case ERROR:     return "ERROR";
         default:
            assert(false);
      }
 }
 
+#define GOT_HERE printf("Got here Line %s, %d\n",__FILE__,__LINE__)
 
 inline std::time_t stringToTimeT(const std::string& dateStr, const char* const dateFormat) {
     std::stringstream str(dateStr);
@@ -87,6 +93,27 @@ inline std::string dateToString(const std::time_t& t) {
    std::stringstream ss; ss << date::format("%F",d);
    return ss.str();
    // return timeTtoString(t,"%F");
+}
+
+
+inline double truncate(double d) {
+    return (d>0) ? std::floor(d) : std::ceil(d) ; 
+}
+
+
+inline int compare3decimalplaces(double lhs, double rhs) {
+    constexpr double pow10 = std::pow(10,3); // 3 decimal places
+    const double res_lhs = truncate(pow10 * lhs);
+    const double res_rhs = truncate(pow10 * rhs);
+    int result = 0;
+    if (res_lhs > res_rhs) {
+        result = 1;
+    } else if (res_lhs < res_rhs) {
+        result = -1;
+    } else {
+        result = 0;
+    }
+    return result;
 }
 
 } // an - namespace
