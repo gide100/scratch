@@ -32,11 +32,11 @@ There are two pair to the code the matching engine and messages and the transpor
 
 ## Motivation
 
-iJus to understand more about how to write an exchange and how matching engines work.
+Just to understand how to write an exchange and how matching engines work.
 
 ## Installation
 
-Requiesr b2 (Boost Build aka Jam), a C++11 complaint compiler and the Boost libraries 1.66 or higher.
+Requires b2 (Boost Build aka Jam), a C++11 complaint compiler and the Boost libraries 1.66 or higher.
 
 ## Tests
 
@@ -46,7 +46,7 @@ b2 && bin/gcc-gnu-7/debug/unittest_order --log_level=test_suit
 
 ## Contributors
 
-Just me at the moment I'm contactable on e-mail andrew at sprysoltuions(DOT)co(DOT)uk
+Just me at the moment, I am contactable on e-mail, andrew at sprysoltuions(DOT)co(DOT)uk
 
 ## License
 
