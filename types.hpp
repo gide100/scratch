@@ -30,6 +30,8 @@ enum direction_t { BUY, SELL };
 enum order_t { LIMIT, MARKET, CANCEL, AMEND };
 enum response_t { ACK, COMPLETE, REJECT, CANCELLED, UNKNOWN, ERROR }; 
 typedef std::string text_t;
+typedef double volume_t;
+typedef std::int64_t counter_t;
 
 typedef std::string symbol_t;
 const location_t ME = "ME"; // Matching Engine
@@ -38,7 +40,7 @@ const location_t ME = "ME"; // Matching Engine
 typedef std::uint32_t security_id_t;
 typedef std::time_t date_t;
 typedef std::uint32_t ladder_id_t;
-const   std::time_t MY_MAX_DATE = 0x7FFFFFFF;
+const   date_t MY_MAX_DATE = 0x7FFFFFFF;
 
 const std::string MY_LOCALE = "en_GB.UTF-8";
 
@@ -52,6 +54,15 @@ inline const char* to_string(direction_t d) {
         case SELL: return "SELL";
         default:
            assert(false);
+     }
+}
+
+inline const char* to_string_book(direction_t d) {
+     switch (d) {
+        case BUY: return "BID";
+        case SELL: return "ASK";
+        default:
+           assert(false);                                                                                     
      }
 }
 
@@ -88,8 +99,8 @@ inline std::string timeTtoString(const std::time_t& t,  const char* const dateFo
    return ss.str();
 }
 
-inline std::string dateToString(const std::time_t& t) {
-   auto d = date::floor<date::days>(std::chrono::system_clock::from_time_t(t));
+inline std::string dateToString(date_t myDate) {
+   auto d = date::floor<date::days>(std::chrono::system_clock::from_time_t(myDate));
    std::stringstream ss; ss << date::format("%F",d);
    return ss.str();
    // return timeTtoString(t,"%F");
