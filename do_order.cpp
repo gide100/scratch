@@ -50,20 +50,17 @@ int main() {
         an::Message::makeOrder("type=LIMIT:id=201:origin=Client2:destination=ME:symbol=MSFT:direction=SELL:shares=10:price=93.0")));
     std::unique_ptr<an::Execution> lim30d(static_cast<an::Execution*>(
         an::Message::makeOrder("type=LIMIT:id=202:origin=Client2:destination=ME:symbol=MSFT:direction=SELL:shares=20:price=91.3")));
-    std::unique_ptr<an::Execution> o20c(static_cast<an::Execution*>(
+    std::unique_ptr<an::Execution> mkt20c(static_cast<an::Execution*>(
         an::Message::makeOrder("type=MARKET:id=203:origin=Client2:destination=ME:symbol=MSFT:direction=SELL:shares=100")));
     std::unique_ptr<an::Execution> mkt20d(static_cast<an::Execution*>(
         an::Message::makeOrder("type=MARKET:id=123:origin=Client3:destination=ME:symbol=MSFT:direction=SELL:shares=25")));
     std::cout << *mkt20d << std::endl;
-    std::unique_ptr<an::AmendOrder> amd20a(static_cast<an::AmendOrder*>(
-        an::Message::makeOrder("type=AMEND:id=123:origin=Client3:destination=ME:symbol=APPL:shares=30")));
-    std::cout << *amd20a << std::endl;
     std::unique_ptr<an::CancelOrder> can20a(static_cast<an::CancelOrder*>(
         an::Message::makeOrder("type=CANCEL:id=123:origin=Client1:destination=ME:symbol=APPL")));
     std::cout << *can20a << std::endl;
     auto can30a = make_unique_ptr(new an::CancelOrder(101,"Client1",an::ME,"ENE"));
     std::cout << *can30a << std::endl;
-    auto amd10a = make_unique_ptr(new an::AmendOrder(101,"Client1",an::ME,"MSFT",95.5));
+    auto amd10a = make_unique_ptr(new an::AmendOrder(102,"Client1",an::ME,"MSFT",95.5));
     std::cout << *amd10a << std::endl;
     auto amd10b = make_unique_ptr(new an::AmendOrder(201,"Client1",an::ME,"MSFT",94.5));
     std::cout << *amd10b << std::endl;
@@ -80,16 +77,15 @@ int main() {
     tickdb.loadData("NXT_ticksize.txt");
 
     std::cout << " *** ME ***" << std::endl;
-    an::MatchingEngine me(an::ME, secdb);
+    an::MatchingEngine me(an::ME, secdb, true);
     me.applyOrder(std::move(lim30a));
-    //me.applyOrder(std::move(lim30b));
+    me.applyOrder(std::move(lim30b));
     me.applyOrder(std::move(lim30c));
-    //me.applyOrder(std::move(o20b));
-    //me.applyOrder(std::move(o20c));
-    //me.applyOrder(std::move(mkt01z));
-    //me.applyOrder(std::move(can30a));
-    me.applyOrder(std::move(amd01a));
-    me.applyOrder(std::move(amd02a));
+    me.applyOrder(std::move(mkt01z));
+    me.applyOrder(std::move(can20a));
+    me.applyOrder(std::move(can30a));
+    me.applyOrder(std::move(amd10a));
+    me.applyOrder(std::move(amd10b));
     std::cout << me.to_string() << std::endl;
     me.close();
  
@@ -116,7 +112,7 @@ int main() {
 
     std::cout << "===============================" << std::endl;
     while (!side.empty()) {
-        std::cout << an::to_string(side.top(), me.steadyClockStartTime(), me.systemClockStartTime()) << std::endl;
+        std::cout << an::to_string(side.top(), me.epoch()) << std::endl;
         side.pop();
     }
     std::cout << "===============================" << std::endl;

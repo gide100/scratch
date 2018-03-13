@@ -11,12 +11,25 @@ class SecurityDatabase ;
 //
 //typedef std::chrono::microseconds since_t;
 typedef std::chrono::steady_clock::time_point since_t;
+struct epoch_t {
+    std::chrono::steady_clock::time_point steadyClockStartTime;
+    std::chrono::system_clock::time_point systemClockStartTime;
+};
+
+inline static std::string sinceToString(since_t time, const epoch_t& epoch) {
+    std::ostringstream os;
+    // https://stackoverflow.com/questions/18361638/converting-steady-clocktime-point-to-time-t
+    // https://stackoverflow.com/questions/35282308/convert-between-c11-clocks
+    std::chrono::system_clock::time_point myTime = epoch.systemClockStartTime + (time - epoch.steadyClockStartTime);
+    os << date::format("%T",myTime); // "HH:MM:SS.SSSS";
+    return os.str();
+}
 
 // ************************** MATCHING ENGINE ******************************
 
 class MatchingEngine {
     public:
-        MatchingEngine(const an::location_t& exchange, SecurityDatabase& secdb);
+        MatchingEngine(const an::location_t& exchange, SecurityDatabase& secdb, bool bookkeep=true);
         ~MatchingEngine();
 
         void close();
@@ -28,37 +41,17 @@ class MatchingEngine {
         void applyOrder(std::unique_ptr<CancelOrder> o);
         void applyOrder(std::unique_ptr<AmendOrder> o);
 
-        inline static std::string sinceToString(
-                since_t time, 
-                std::chrono::steady_clock::time_point steadyClockStartTime,
-                std::chrono::system_clock::time_point systemClockStartTime) {
-            std::ostringstream os;
-            // https://stackoverflow.com/questions/18361638/converting-steady-clocktime-point-to-time-t
-            // https://stackoverflow.com/questions/35282308/convert-between-c11-clocks
-            //const auto system_now = system_clock::now() ;
-            //const auto steady_now = steady_clock::now();
-            std::chrono::system_clock::time_point myTime = systemClockStartTime + (time - steadyClockStartTime);
-            //system_clock::time_point myTime = time_point_cast<system_clock::duration>(systemClockStartTime_ + (time - steadyClockStartTime_));
-            os << date::format("%T",myTime);
-            // os << "HH:MM:SS.SSSS";
-            return os.str();
-        }
-
         static void sendTradeReport(Order* o, direction_t d, shares_t s, price_t p);
         static void sendResponse(Message* o, response_t r, text_t t);
-        const std::chrono::steady_clock::time_point& steadyClockStartTime() const {
-            return steadyClockStartTime_;
-        }
-        const std::chrono::system_clock::time_point& systemClockStartTime() const {
-            return systemClockStartTime_;
+        const epoch_t& epoch() const {
+            return epoch_;
         }
     private:
         //void applyOrder(std::unique_ptr<Execution> o);
         Book* findBook(const symbol_t& symbol);
      
         sequence_t  seq_;
-        std::chrono::steady_clock::time_point steadyClockStartTime_;
-        std::chrono::system_clock::time_point systemClockStartTime_;
+        epoch_t     epoch_;
         an::location_t exchange_;
         an::SecurityDatabase& secdb_;
 
@@ -98,6 +91,85 @@ struct SideRecord {
     bool        visible;
     bool        matched;
 };
+
+
+class Bookkeeper { 
+    public:
+        Bookkeeper(date_t date, price_t previous_close, const epoch_t& epoch) 
+            : trading_date_(date), epoch_(epoch), previous_close_(previous_close),
+              shares_traded_(0), volume_(0.0), trades_(0), cancels_(0), amends_(0), rejects_(0), 
+              daily_high_(0.0), daily_low_(0.0), 
+              open_price_(0.0), close_price_(0.0),
+              avg_share_price_(0.0), last_trade_price_(0.0), last_trade_time_() {
+        }
+        ~Bookkeeper() { }
+
+        void trade(direction_t direction, shares_t shares, price_t price, since_t since) {
+            shares_traded_ += shares;
+            volume_ += price * shares;
+            if (trades_ == 0) {
+                daily_high_ = price;
+                daily_low_ = price;
+                open_price_ = price;
+            } else {
+                daily_high_ = std::max(daily_high_,price);
+                daily_low_ = std::min(daily_low_,price);
+            }
+            ++trades_;
+            last_trade_price_ = price;
+            last_trade_time_ = since;
+        }
+        void cancel() {
+            ++cancels_;
+        }
+        void amend() {
+            ++amends_;
+        }
+        void reject() {
+            ++rejects_;
+        }
+        void close() {
+            close_price_ = last_trade_price_;
+            if (trades_ !=0) {
+                avg_share_price_ = volume_ / shares_traded_;
+            }
+        }
+        std::string to_string(bool verbose = false) {
+            std::ostringstream os;
+            os << dateToString(trading_date_) << " prev=" << previous_close_ 
+               << " shares=" << shares_traded_ << " volume=" << volume_
+               << " trades=" << trades_ << " cancels=" << cancels_ 
+               << " amends=" << amends_ << " rejects=" << rejects_;
+                if (trades_ != 0) {
+                    os << " high=" << daily_high_ << " low=" << daily_low_ 
+                       << " open=" << open_price_ << " close=" << close_price_
+                       << " avg=" << avg_share_price_
+                       << " last_price=" << last_trade_price_ 
+                       << " last_time=" << sinceToString(last_trade_time_,epoch_);
+                } else {
+                    os << " high=N/A low=N/A open=N/A close=N/A avg=N/A last_price=N/A last_time=N/A";
+                }
+            return os.str();
+        }
+    private:
+        date_t          trading_date_;
+        const epoch_t&  epoch_;
+        price_t         previous_close_;
+        shares_t        shares_traded_; 
+        volume_t        volume_; 
+        counter_t       trades_; // If zero no trading, last_trade_time_ invalid, etc
+        counter_t       cancels_;
+        counter_t       amends_;
+        counter_t       rejects_;
+        price_t         daily_high_;
+        price_t         daily_low_;
+        price_t         open_price_;
+        price_t         close_price_;
+        price_t         avg_share_price_;
+        price_t         last_trade_price_;
+        since_t         last_trade_time_;
+};
+
 
 // In the priority queue SELL (ASK) should be ascending price/time, conversely 
 // in BUY (BID) the price should descending price/ascedning time.
@@ -148,14 +220,16 @@ struct PriorityQueue : std::priority_queue<T,C,P> {
                                                                                                               
 class Book {
     public:
-        explicit Book(symbol_t sym, 
-                      std::chrono::steady_clock::time_point& steadyClockStartTime,                                     
-                      std::chrono::system_clock::time_point& systemClockStartTime) 
-            : symbol_(sym), open_(false), active_order_(), buy_(), sell_(),
-             steadyClockStartTime_(steadyClockStartTime), systemClockStartTime_(systemClockStartTime) {
+        explicit Book(symbol_t sym, epoch_t& epoch, bool bookkeep, price_t closing_price) 
+            : symbol_(sym), open_(false), active_order_(), buy_(), sell_(), epoch_(epoch),
+              bookkeep_(bookkeep), 
+              bookkeeper_(
+                std::chrono::system_clock::to_time_t(date::floor<date::days>(std::chrono::system_clock::now())),
+                closing_price, epoch_) {
         }
-        Book(const Book& book) : symbol_(book.symbol_), 
-             steadyClockStartTime_(book.steadyClockStartTime_), systemClockStartTime_(book.systemClockStartTime_) {
+        Book(const Book& book) 
+            : symbol_(book.symbol_), epoch_(book.epoch_), 
+              bookkeep_(book.bookkeep_), bookkeeper_(book.bookkeeper_) { 
             assert(book.open_!=true && "Cannot copy open book");
         }
         Book& operator=(const Book& book) = delete;
@@ -166,6 +240,7 @@ class Book {
         void open() { assert(!open_); open_ = true; }
         void close() { 
             if (open_) {
+                bookkeeper_.close();
                 closeBook(); open_ = false; 
             }
             assert(active_order_.empty() && "active orders empty after closeBook()");
@@ -187,24 +262,24 @@ class Book {
         }
         void cancelActiveOrder(order_id_t id, std::unique_ptr<CancelOrder> o) {
             if (!open_) {
-                sendResponse(o.get(), REJECT, "book not open");
+                sendReject(o.get(), "book not open");
                 return;
             }
             SideRecord* recPtr = findSideRecord(id);
             if (recPtr != nullptr) {
                 recPtr->visible = false;
-                Order* exe = findActiveOrder(id);
+                Execution* exe = findActiveOrder(id);
                 assert(exe != nullptr && "cancelActiveOrder order not found"); //TODO - not required
-                sendResponse(exe, an::COMPLETE,"cancel success"); 
+                sendCancel(exe,"order cancel success"); 
                 removeActiveOrder(id);
             } else {
                 assert(findActiveOrder(id) == nullptr && "cancelActiveOrder active order not in a side");
-                sendResponse(o.get(), REJECT, "order not found");
+                sendReject(o.get(), "order not found");
             }
         }
         void amendActiveOrder(order_id_t id, std::unique_ptr<AmendOrder> o) {
             if (!open_) {
-                sendResponse(o.get(), an::REJECT, "book not open");
+                sendReject(o.get(), "book not open");
                 return;
             }
             SideRecord* recPtr = findSideRecord(id);
@@ -217,6 +292,7 @@ class Book {
                          ((newRec.direction==SELL) && (amend.price >= newRec.price)) ) {
                         // Away from touch, (TODO not better than touch ???)
                         Execution* exe = findActiveOrder(id);
+                        assert(exe != nullptr && "amendActiveOrder price order not found");
                         if ((amended = exe->amend(amend)) == true) {
                             newRec.price = amend.price;
                             recPtr->visible = false;
@@ -227,6 +303,7 @@ class Book {
                         // Towards touch, might be marketable
                         std::unique_ptr<Execution> exe;
                         exe.reset(findActiveOrder(id, true));
+                        assert(exe != nullptr && "amendActiveOrder price order not found");
                         if ((amended = exe->amend(amend)) == true) {
                             newRec.price = amend.price;
                             // As it's an existing order check whether it is marketable
@@ -235,26 +312,29 @@ class Book {
                             executeOrder(newRec,std::move(exe));
                         }
                     }
-                    if (!amended) {
-                        sendResponse(o.get(), REJECT, "Invalid amend of execution order");
+                    if (amended) {
+                        sendAmend(o.get());
+                    } else {
+                        sendReject(o.get(), "Invalid amend of execution order");
                     }
                 } else {
                     // Shares
                     Execution* exe = findActiveOrder(id);
-                    if (!exe->amend(amend)) {
-                        sendResponse(o.get(), REJECT, "Invalid amend of execution order");
-                    } else {
+                    assert(exe != nullptr && "amendActiveOrder price order not found");
+                    if (exe->amend(amend)) {
                         recPtr->shares = amend.shares;
-                        sendResponse(o.get(), COMPLETE, "amend success");
+                        sendAmend(o.get());
+                    } else {
+                        sendReject(o.get(), "Invalid amend of execution order");
                     }
                 }
             } else {
-                sendResponse(o.get(), REJECT, "unknown order");
+                sendReject(o.get(), "unknown order");
             }
         }
         void executeOrder(SideRecord& rec, std::unique_ptr<Execution> exe) {
             if (!open_) {
-                sendResponse(exe.get(), REJECT, "book not open");
+                sendReject(exe.get(),"book not open");
                 return;
             }
             if (!marketable(rec, exe.get())) {                                                                      
@@ -263,22 +343,45 @@ class Book {
                     addSideRecord(rec);                                                                          
                     addActiveOrder(rec.id, std::move(exe), rec.direction);                                                    
                 } else if (rec.order_type == MARKET) {
-                    sendResponse(exe.get(), CANCELLED, "no bid/ask for market order");
+                    sendCancel(exe.get(), "no bid/ask for market order");
                 } else {
                     assert(false && "marketableOrBook Unknown order_type");
                 }
             }           
         }
     private:
-        void sendTradeReport(Order* o, direction_t d, shares_t s, price_t p) {
-            MatchingEngine::sendTradeReport(o,d,s,p);
-        }
         void sendResponse(Message* o, response_t r, text_t t) {
             MatchingEngine::sendResponse(o, r, t);
         }
+        void sendTradeReport(Order* o, direction_t d, shares_t s, price_t p) {
+            if (bookkeep_) {
+                bookkeeper_.trade(d, s, p, std::chrono::steady_clock::now());
+            }
+            MatchingEngine::sendTradeReport(o,d,s,p);
+        }
+        void sendCancel(Execution* exe, const text_t& text) {
+            if (bookkeep_) {
+                bookkeeper_.cancel();
+            }
+            sendResponse(exe, an::CANCELLED, text); 
+        }
+        void sendAmend(Order* o) {
+            if (bookkeep_) {
+                bookkeeper_.amend();
+            }
+            sendResponse(o, an::COMPLETE,"amend success"); 
+        }
+        void sendReject(Order* o, const text_t& text) {
+            if (bookkeep_) {
+                bookkeeper_.reject();
+            }
+            sendResponse(o, an::REJECT, text); 
+        }
+
         bool marketable(SideRecord& newRec, Execution* exe);
 
         void closeBook();
+
         Execution* findActiveOrder(order_id_t id, bool release=false) {
             Execution* found = nullptr;
             auto search = active_order_.find(id);
@@ -322,7 +425,7 @@ class Book {
             return found;
         }
         std::string sinceToString(since_t time) const {
-            return MatchingEngine::sinceToString(time, steadyClockStartTime_, systemClockStartTime_);
+            return an::sinceToString(time, epoch_);
         }
 
         struct open_order {
@@ -341,17 +444,16 @@ class Book {
         active_order_t active_order_;
         Side buy_;
         Side sell_;
-        std::chrono::steady_clock::time_point& steadyClockStartTime_;
-        std::chrono::system_clock::time_point& systemClockStartTime_;
+        epoch_t& epoch_;
+        bool bookkeep_;
+        Bookkeeper bookkeeper_;
 }; // Book
 
 
-inline std::string to_string(const SideRecord& sr, 
-        const std::chrono::steady_clock::time_point& steadyClockStartTime, 
-        const std::chrono::system_clock::time_point& systemClockStartTime) {
+inline std::string to_string(const SideRecord& sr, const epoch_t& epoch) {
     std::ostringstream os;
     os << "seq=" << sr.seq << " direction=" << to_string(sr.direction) << " price=" << sr.price << " time=" 
-       << MatchingEngine::sinceToString(sr.time, steadyClockStartTime, systemClockStartTime);
+       << sinceToString(sr.time, epoch);
     return os.str();
 }
 
