@@ -8,17 +8,17 @@
 
 namespace an {
 
-using std::runtime_error; 
+using std::runtime_error;
 class OrderError : public runtime_error {
     public:
         explicit OrderError(const std::string& msg) : runtime_error(msg), origin_() { }
-        explicit OrderError(const std::string& msg, location_t& origin) 
+        explicit OrderError(const std::string& msg, location_t& origin)
             : runtime_error(msg), origin_(origin) { }
         bool haveOrigin() {  return !origin_.empty(); }
     protected:
         location_t origin_;
 };
- 
+
 typedef enum { NONE, PRICE, SHARES } field_t;
 struct amend_t {
     field_t field;
@@ -35,7 +35,7 @@ struct amend_t {
           default:
             return "unknown:field_t";
         }
-    }    
+    }
 };
 
 
@@ -45,12 +45,12 @@ struct SideRecord ;
 
 class Message {
     public:
-        Message(location_t origin, location_t dest = ME) 
+        Message(location_t origin, location_t dest = ME)
             : origin_(origin), destination_(dest), reverse_direction_(false) {}
 
         virtual std::string to_string() const = 0;
-        virtual ~Message() = 0; 
-        
+        virtual ~Message() = 0;
+
         // Factory and string parser
         static Message* makeOrder(const std::string& input);
 
@@ -69,18 +69,18 @@ class Login : public Message {
         Login(location_t origin, location_t dest = ME) : Message(origin, dest) { }
         virtual std::string to_string() const;
 
-        virtual ~Login(); 
+        virtual ~Login();
 };
 
 
 class Order : public Message {
     public:
-        Order(order_id_t id, location_t origin, location_t dest, symbol_t sym) 
-             : Message(origin, dest), order_id_(id), symbol_(sym) //, origin_(origin), destination_(dest) 
+        Order(order_id_t id, location_t origin, location_t dest, symbol_t sym)
+             : Message(origin, dest), order_id_(id), symbol_(sym) //, origin_(origin), destination_(dest)
              { }
 
         virtual std::string to_string() const = 0;
-        virtual ~Order() = 0; 
+        virtual ~Order() = 0;
         virtual void applyOrder(MatchingEngine& me) = 0;
 
         order_id_t orderId() const { return order_id_; }
@@ -88,13 +88,13 @@ class Order : public Message {
     protected:
         order_id_t order_id_;
         symbol_t symbol_;
-        
+
 };
 
 
 class Execution : public Order {
     public:
-        Execution(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, shares_t s) 
+        Execution(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, shares_t s)
             : Order(id, o, dest, sym), direction_(d), shares_(s) { }
         virtual std::string to_string() const = 0;
         virtual ~Execution() = 0;
@@ -110,11 +110,11 @@ class Execution : public Order {
 
 class LimitOrder : public Execution {
     public:
-        LimitOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, shares_t s, price_t p) 
+        LimitOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, shares_t s, price_t p)
             : Execution(id, o, dest, sym, d, s), price_(p) {}
 
         virtual std::string to_string() const;
-        virtual ~LimitOrder() ;   
+        virtual ~LimitOrder() ;
         virtual void applyOrder(MatchingEngine& me) ;
 
         virtual void pack(SideRecord& rec) const ;
@@ -126,7 +126,7 @@ class LimitOrder : public Execution {
 
 class MarketOrder : public Execution {
     public:
-        MarketOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, shares_t s) 
+        MarketOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, direction_t d, shares_t s)
             : Execution(id,o,dest,sym,d,s) {}
 
         virtual std::string to_string() const;
@@ -150,13 +150,13 @@ class CancelOrder : public Order {
 
 class AmendOrder : public Order {
     public:
-        explicit AmendOrder(order_id_t id, location_t o, location_t dest, symbol_t sym) 
-            : Order(id, o, dest, sym) { 
-                amend_.field = NONE; amend_.price=0.0; 
+        explicit AmendOrder(order_id_t id, location_t o, location_t dest, symbol_t sym)
+            : Order(id, o, dest, sym) {
+                amend_.field = NONE; amend_.price=0.0;
         }
-        AmendOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, price_t p) 
+        AmendOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, price_t p)
             : Order(id, o, dest, sym), amend_({PRICE, {.price = p}}) { }
-        AmendOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, shares_t s) 
+        AmendOrder(order_id_t id, location_t o, location_t dest, symbol_t sym, shares_t s)
             : Order(id, o, dest, sym) {
             amend_.field = SHARES; amend_.shares = s;
         }
@@ -168,7 +168,7 @@ class AmendOrder : public Order {
         an::amend_t& amend() { return amend_; }
     protected:
         amend_t amend_;
-      
+
 };
 
 // Decorator to responde to messages
@@ -179,7 +179,7 @@ class Response : public Message {
             if (m == nullptr) {
                 throw OrderError("nullptr in Response Message");
             }
-            if ((text_.find(':')!=text_t::npos) || (text_.find('=')!=text_t::npos) || 
+            if ((text_.find(':')!=text_t::npos) || (text_.find('=')!=text_t::npos) ||
                 (text_.find('\n')!=text_t::npos)) {
                 throw OrderError("Cannot have [:|=\\n] in Response text");
             }
@@ -187,7 +187,7 @@ class Response : public Message {
         }
         explicit Response(location_t origin, response_t response=ERROR, text_t text = "")
              : Message(origin,ME), message_(nullptr), response_(response), text_(text) {
-            if ((text_.find(':')!=text_t::npos) || (text_.find('=')!=text_t::npos) || 
+            if ((text_.find(':')!=text_t::npos) || (text_.find('=')!=text_t::npos) ||
                 (text_.find('\n')!=text_t::npos)) {
                 throw OrderError("Cannot have [:|=\\n] in Response text");
             }
@@ -205,15 +205,15 @@ class Response : public Message {
 
 class TradeReport : public Message {
     public:
-        explicit TradeReport(Order* o, direction_t d, shares_t s, price_t p) 
-            : Message(o->destination(), o->origin()), orig_order_id_(o->orderId()), symbol_(o->symbol()), 
+        explicit TradeReport(Order* o, direction_t d, shares_t s, price_t p)
+            : Message(o->destination(), o->origin()), orig_order_id_(o->orderId()), symbol_(o->symbol()),
               direction_(d), shares_(s), price_(p) {
-        } 
+        }
 
         virtual std::string to_string() const;
         virtual ~TradeReport();
     protected:
-        order_id_t orig_order_id_; 
+        order_id_t orig_order_id_;
         symbol_t symbol_;
         direction_t direction_;
         shares_t shares_;

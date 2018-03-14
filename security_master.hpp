@@ -32,7 +32,7 @@ struct tick_table_row_t {
     void setUpper(price_t u) {
         //std::cout << "setUpper " << u << std::endl;
         have_upper = true;
-        upper = u; check(); 
+        upper = u; check();
     }
 
     std::string to_string() const;
@@ -63,12 +63,12 @@ struct tick_table_row_t {
 
 
 struct tick_table_t {
-    void add(tick_table_row_t tr) { 
+    void add(tick_table_row_t tr) {
         if (!rows.empty()) {
             auto& lastTr = rows.back();
             lastTr.setUpper(tr.lower);
         }
-        rows.push_back(tr); 
+        rows.push_back(tr);
     }
     void reset() { rows.clear(); }
     std::vector<tick_table_row_t> rows;

@@ -64,7 +64,7 @@ class Shutdown {
         boost::asio::io_context signalContext_;
         std::thread signalThread_;
         boost::asio::signal_set signals_;
-        
+
         boost::asio::deadline_timer doWaitTimer_;
 
         void handleStop(const boost::system::error_code& error, int signal_number) {

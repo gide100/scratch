@@ -5,9 +5,9 @@
 
 
 an::MatchingEngine::MatchingEngine(const an::location_t& exchange, SecurityDatabase& secdb, bool bookkeep)
-             : seq_(1), 
+             : seq_(1),
              epoch_{ std::chrono::steady_clock::now(), std::chrono::system_clock::now() },
-             exchange_(exchange), secdb_(secdb) { 
+             exchange_(exchange), secdb_(secdb) {
     book_.reserve(secdb.securities().size() *2);
     for (const auto& sec : secdb.securities() ) {
         book_.emplace_back(sec.symbol,epoch_, bookkeep, sec.closing_price);
@@ -17,7 +17,7 @@ an::MatchingEngine::MatchingEngine(const an::location_t& exchange, SecurityDatab
     }
 }
 
-an::MatchingEngine::~MatchingEngine() { 
+an::MatchingEngine::~MatchingEngine() {
     assert(book_.empty() && "MatchingEngine::~MatchingEngine should be closed");
 }
 
@@ -50,7 +50,7 @@ std::string an::MatchingEngine::to_string() const {
 
 void an::MatchingEngine::applyOrder(std::unique_ptr<Execution> exe) {
     SideRecord rec;
-    exe->pack(rec); 
+    exe->pack(rec);
     rec.time = std::chrono::steady_clock::now();
     rec.seq = seq_++;
     rec.visible = true;
@@ -76,24 +76,24 @@ void an::MatchingEngine::applyOrder(std::unique_ptr<CancelOrder> o) {
 
 void an::MatchingEngine::applyOrder(std::unique_ptr<AmendOrder> o) {
     const symbol_t& symbol = o->symbol();
-    Book* book = findBook(symbol); 
+    Book* book = findBook(symbol);
     if (book != nullptr) {
         order_id_t id = o->orderId();
         book->amendActiveOrder(id,std::move(o));
     } else {
         sendResponse(o.get(), an::REJECT, "symbol not found");
-    } 
+    }
 }
 
-an::Book* an::MatchingEngine::findBook(const symbol_t& symbol) {                                                              
-    Book* bookPtr = nullptr;                                                                          
-    auto symbol_idx = secdb_.find(symbol);                                                            
-    if (symbol_idx != SecurityDatabase::npos) { // FOUND                                              
-        // std::cout << "lookuoBook=" << symbol << " idx=" << symbol_idx << std::endl;                
-        bookPtr = &book_[symbol_idx];                                                                 
-    }                                                                                                 
-    return bookPtr;                                                                                   
-} 
+an::Book* an::MatchingEngine::findBook(const symbol_t& symbol) {
+    Book* bookPtr = nullptr;
+    auto symbol_idx = secdb_.find(symbol);
+    if (symbol_idx != SecurityDatabase::npos) { // FOUND
+        // std::cout << "lookuoBook=" << symbol << " idx=" << symbol_idx << std::endl;
+        bookPtr = &book_[symbol_idx];
+    }
+    return bookPtr;
+}
 
 void an::MatchingEngine::sendTradeReport(Order* o, direction_t d, shares_t s, price_t p) {
     std::unique_ptr<TradeReport> tradeRep1(new TradeReport(o, d, s, p));
@@ -136,7 +136,7 @@ bool an::Book::marketableSide(Side& side, SideRecord& newRec, Execution* newExe)
             if (newRec.shares == 0) {
                 sendResponse(newExe, an::COMPLETE, "New Filled");
                 newRec.visible = false;
-                marketable = true; 
+                marketable = true;
             }
         } else {
             // Not marketable if order values not matching
@@ -168,7 +168,7 @@ void an::Book::closeBook() {
         bookkeeper_.close();
         std::cout << symbol_ << " " << bookkeeper_.to_string() << std::endl;
     }
-    assert(active_order_.empty()); 
+    assert(active_order_.empty());
 }
 
 // https://stackoverflow.com/questions/13112062/which-are-the-order-matching-algorithms-most-commonly-used-by-electronic-financi
@@ -176,13 +176,13 @@ std::string an::Book::to_string(bool verbose) const {
     std::ostringstream os;
     if (verbose) {
         os << boost::format("[%1$s]") % symbol_ << std::endl
-           << "    Id Seq  V Side Time               Shares Price    Shares Time               Side" << std::endl 
+           << "    Id Seq  V Side Time               Shares Price    Shares Time               Side" << std::endl
            << "------+----+-+----+------------------+------+--------+------+------------------+----" << std::endl ;
-        Side::container_type data;                                                                                  
-        for (const auto& rec : sell_) {                                                                                      
-            data.push_back(rec);                                                                                    
+        Side::container_type data;
+        for (const auto& rec : sell_) {
+            data.push_back(rec);
         }
-        std::sort( data.begin(), data.end(), std::not2(Side::value_compare(true)) );                                    
+        std::sort( data.begin(), data.end(), std::not2(Side::value_compare(true)) );
         for (const auto& rec: data) { // SELL
            os << boost::format("%1$6d %2$4d %3$1c ") % rec.id % rec.seq % (rec.visible ? '*' : '.')
               << boost::format("%1$30c ") % ' '
@@ -191,13 +191,13 @@ std::string an::Book::to_string(bool verbose) const {
               << std::endl;
         }
         data.clear();
-        for (const auto &rec : buy_) {                                                                                      
-            data.push_back(rec);                                                                                    
+        for (const auto &rec : buy_) {
+            data.push_back(rec);
         }
-        std::sort( data.begin(), data.end(), std::not2(Side::value_compare(true)) );                                    
+        std::sort( data.begin(), data.end(), std::not2(Side::value_compare(true)) );
         for (const auto& rec: data) { // BUY
            os << boost::format("%1$6d %2$4d %3$1c ") % rec.id % rec.seq % (rec.visible ? '*' : '.')
-              << boost::format("%1$4s %2$18s %3$6d ") % an::to_string_book(rec.direction) % sinceToString(rec.time) % rec.shares 
+              << boost::format("%1$4s %2$18s %3$6d ") % an::to_string_book(rec.direction) % sinceToString(rec.time) % rec.shares
               << boost::format("%1$8.3f") % rec.price
               << std::endl;
         }

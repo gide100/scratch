@@ -49,7 +49,7 @@ class MatchingEngine {
     private:
         //void applyOrder(std::unique_ptr<Execution> o);
         Book* findBook(const symbol_t& symbol);
-     
+
         sequence_t  seq_;
         epoch_t     epoch_;
         an::location_t exchange_;
@@ -65,14 +65,14 @@ class MatchingEngine {
 //            auto ss = std::chrono::duration_cast<std::chrono::seconds>(since);
 //            since -= ss;
 //            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(since);
-//            
+//
 //            os << std::setfill('0') << std::setw(2) << hh.count() << ':'
-//               << std::setfill('0') << std::setw(2) << mm.count() << ':' 
-//               << std::setfill('0') << std::setw(2) << ss.count() << '.' 
-//               << std::setfill('0') << std::setw(3) << ms.count() ; 
+//               << std::setfill('0') << std::setw(2) << mm.count() << ':'
+//               << std::setfill('0') << std::setw(2) << ss.count() << '.'
+//               << std::setfill('0') << std::setw(3) << ms.count() ;
 //            return os.str();
 //        }
-        
+
 
         std::vector<Book> book_;
 };
@@ -93,12 +93,12 @@ struct SideRecord {
 };
 
 
-class Bookkeeper { 
+class Bookkeeper {
     public:
-        Bookkeeper(date_t date, price_t previous_close, const epoch_t& epoch) 
+        Bookkeeper(date_t date, price_t previous_close, const epoch_t& epoch)
             : trading_date_(date), epoch_(epoch), previous_close_(previous_close),
-              shares_traded_(0), volume_(0.0), trades_(0), cancels_(0), amends_(0), rejects_(0), 
-              daily_high_(0.0), daily_low_(0.0), 
+              shares_traded_(0), volume_(0.0), trades_(0), cancels_(0), amends_(0), rejects_(0),
+              daily_high_(0.0), daily_low_(0.0),
               open_price_(0.0), close_price_(0.0),
               avg_share_price_(0.0), last_trade_price_(0.0), last_trade_time_() {
         }
@@ -136,15 +136,15 @@ class Bookkeeper {
         }
         std::string to_string(bool verbose = false) {
             std::ostringstream os;
-            os << dateToString(trading_date_) << " prev=" << previous_close_ 
+            os << dateToString(trading_date_) << " prev=" << previous_close_
                << " shares=" << shares_traded_ << " volume=" << volume_
-               << " trades=" << trades_ << " cancels=" << cancels_ 
+               << " trades=" << trades_ << " cancels=" << cancels_
                << " amends=" << amends_ << " rejects=" << rejects_;
                 if (trades_ != 0) {
-                    os << " high=" << daily_high_ << " low=" << daily_low_ 
+                    os << " high=" << daily_high_ << " low=" << daily_low_
                        << " open=" << open_price_ << " close=" << close_price_
                        << " avg=" << avg_share_price_
-                       << " last_price=" << last_trade_price_ 
+                       << " last_price=" << last_trade_price_
                        << " last_time=" << sinceToString(last_trade_time_,epoch_);
                 } else {
                     os << " high=N/A low=N/A open=N/A close=N/A avg=N/A last_price=N/A last_time=N/A";
@@ -155,8 +155,8 @@ class Bookkeeper {
         date_t          trading_date_;
         const epoch_t&  epoch_;
         price_t         previous_close_;
-        shares_t        shares_traded_; 
-        volume_t        volume_; 
+        shares_t        shares_traded_;
+        volume_t        volume_;
         counter_t       trades_; // If zero no trading, last_trade_time_ invalid, etc
         counter_t       cancels_;
         counter_t       amends_;
@@ -171,9 +171,9 @@ class Bookkeeper {
 };
 
 
-// In the priority queue SELL (ASK) should be ascending price/time, conversely 
+// In the priority queue SELL (ASK) should be ascending price/time, conversely
 // in BUY (BID) the price should descending price/ascedning time.
-// For convenience added price_desc_ as sometimes we want to show output in descending price. 
+// For convenience added price_desc_ as sometimes we want to show output in descending price.
 struct CompareSideRecord {
     CompareSideRecord(bool one_list=false) : one_list_(one_list) {}
     typedef const SideRecord& first_argument_type;
@@ -201,35 +201,35 @@ struct CompareSideRecord {
     bool one_list_; // Output in one list
 };
 
-static const SideRecord DefaultSideRecord =  
-   { .id=0, .seq=0, .time=since_t(), .order_type=an::LIMIT, 
-     .direction=an::BUY, .price=0.0, .shares=0, .visible=false, .matched=false }; 
+static const SideRecord DefaultSideRecord =
+   { .id=0, .seq=0, .time=since_t(), .order_type=an::LIMIT,
+     .direction=an::BUY, .price=0.0, .shares=0, .visible=false, .matched=false };
 
 
 // Priority queue with accessible Container type.
-template<class T, class C = std::vector<T>, class P = std::less<typename C::value_type> >                     
-struct PriorityQueue : std::priority_queue<T,C,P> {                                                           
-    //using std::priority_queue<T,C,P>::priority_queue;                                                       
-    typename C::iterator begin() { return std::priority_queue<T, C, P>::c.begin(); }                          
-    typename C::iterator end() { return std::priority_queue<T, C, P>::c.end(); }                              
-    typename C::const_iterator begin() const { return std::priority_queue<T, C, P>::c.cbegin(); }            
-    typename C::const_iterator end() const { return std::priority_queue<T, C, P>::c.cend(); }                
-    typename C::const_iterator cbegin() const { return std::priority_queue<T, C, P>::c.cbegin(); }            
-    typename C::const_iterator cend() const { return std::priority_queue<T, C, P>::c.cend(); }                
+template<class T, class C = std::vector<T>, class P = std::less<typename C::value_type> >
+struct PriorityQueue : std::priority_queue<T,C,P> {
+    //using std::priority_queue<T,C,P>::priority_queue;
+    typename C::iterator begin() { return std::priority_queue<T, C, P>::c.begin(); }
+    typename C::iterator end() { return std::priority_queue<T, C, P>::c.end(); }
+    typename C::const_iterator begin() const { return std::priority_queue<T, C, P>::c.cbegin(); }
+    typename C::const_iterator end() const { return std::priority_queue<T, C, P>::c.cend(); }
+    typename C::const_iterator cbegin() const { return std::priority_queue<T, C, P>::c.cbegin(); }
+    typename C::const_iterator cend() const { return std::priority_queue<T, C, P>::c.cend(); }
 };
-                                                                                                              
+
 class Book {
     public:
-        explicit Book(symbol_t sym, epoch_t& epoch, bool bookkeep, price_t closing_price) 
+        explicit Book(symbol_t sym, epoch_t& epoch, bool bookkeep, price_t closing_price)
             : symbol_(sym), open_(false), active_order_(), buy_(), sell_(), epoch_(epoch),
-              bookkeep_(bookkeep), 
+              bookkeep_(bookkeep),
               bookkeeper_(
                 std::chrono::system_clock::to_time_t(date::floor<date::days>(std::chrono::system_clock::now())),
                 closing_price, epoch_) {
         }
-        Book(const Book& book) 
-            : symbol_(book.symbol_), epoch_(book.epoch_), 
-              bookkeep_(book.bookkeep_), bookkeeper_(book.bookkeeper_) { 
+        Book(const Book& book)
+            : symbol_(book.symbol_), epoch_(book.epoch_),
+              bookkeep_(book.bookkeep_), bookkeeper_(book.bookkeeper_) {
             assert(book.open_!=true && "Cannot copy open book");
         }
         Book& operator=(const Book& book) = delete;
@@ -238,23 +238,23 @@ class Book {
         std::string to_string(bool verbose = false) const;
 
         void open() { assert(!open_); open_ = true; }
-        void close() { 
+        void close() {
             if (open_) {
                 bookkeeper_.close();
-                closeBook(); open_ = false; 
+                closeBook(); open_ = false;
             }
             assert(active_order_.empty() && "active orders empty after closeBook()");
         }
         bool matchSymbol(const symbol_t& symbol) { return symbol == symbol_; }
         // Activate Orders
         void addActiveOrder(order_id_t id, std::unique_ptr<Execution> o, direction_t d) {
-            active_order_.emplace(id, std::move(open_order{id, std::move(o), d}));                                                 
+            active_order_.emplace(id, std::move(open_order{id, std::move(o), d}));
         }
         void addSideRecord(SideRecord& rec) {
-            // Add to queue                                                                                   
-            if (rec.direction == an::BUY) {                                                                   
-                 buy_.push(rec);                                                                          
-            } else if (rec.direction == an::SELL) {                                                           
+            // Add to queue
+            if (rec.direction == an::BUY) {
+                 buy_.push(rec);
+            } else if (rec.direction == an::SELL) {
                  sell_.push(rec);
             } else {
                 assert(false); // Unknown direction
@@ -270,7 +270,7 @@ class Book {
                 recPtr->visible = false;
                 Execution* exe = findActiveOrder(id);
                 assert(exe != nullptr && "cancelActiveOrder order not found"); //TODO - not required
-                sendCancel(exe,"order cancel success"); 
+                sendCancel(exe,"order cancel success");
                 removeActiveOrder(id);
             } else {
                 assert(findActiveOrder(id) == nullptr && "cancelActiveOrder active order not in a side");
@@ -337,17 +337,17 @@ class Book {
                 sendReject(exe.get(),"book not open");
                 return;
             }
-            if (!marketable(rec, exe.get())) {                                                                      
+            if (!marketable(rec, exe.get())) {
                 if (rec.order_type == LIMIT) {
-                    // Add to queue                                                                                   
-                    addSideRecord(rec);                                                                          
-                    addActiveOrder(rec.id, std::move(exe), rec.direction);                                                    
+                    // Add to queue
+                    addSideRecord(rec);
+                    addActiveOrder(rec.id, std::move(exe), rec.direction);
                 } else if (rec.order_type == MARKET) {
                     sendCancel(exe.get(), "no bid/ask for market order");
                 } else {
                     assert(false && "marketableOrBook Unknown order_type");
                 }
-            }           
+            }
         }
     private:
         void sendResponse(Message* o, response_t r, text_t t) {
@@ -363,19 +363,19 @@ class Book {
             if (bookkeep_) {
                 bookkeeper_.cancel();
             }
-            sendResponse(exe, an::CANCELLED, text); 
+            sendResponse(exe, an::CANCELLED, text);
         }
         void sendAmend(Order* o) {
             if (bookkeep_) {
                 bookkeeper_.amend();
             }
-            sendResponse(o, an::COMPLETE,"amend success"); 
+            sendResponse(o, an::COMPLETE,"amend success");
         }
         void sendReject(Order* o, const text_t& text) {
             if (bookkeep_) {
                 bookkeeper_.reject();
             }
-            sendResponse(o, an::REJECT, text); 
+            sendResponse(o, an::REJECT, text);
         }
 
         bool marketable(SideRecord& newRec, Execution* exe);
@@ -400,10 +400,10 @@ class Book {
             assert(count==1 && "removeActiveOrder id not found");
         }
 
-        struct MatchOrderId { // Functor                                                                              
-            explicit MatchOrderId(an::order_id_t order_id) : order_id_(order_id) { }                                  
-            bool operator()(const an::SideRecord& rec) const { return rec.id == order_id_; }                          
-            an::order_id_t order_id_;                                                                                 
+        struct MatchOrderId { // Functor
+            explicit MatchOrderId(an::order_id_t order_id) : order_id_(order_id) { }
+            bool operator()(const an::SideRecord& rec) const { return rec.id == order_id_; }
+            an::order_id_t order_id_;
         };
         SideRecord* findSideRecord(order_id_t id) {
             SideRecord* found = nullptr;
@@ -435,7 +435,7 @@ class Book {
         };
         //typedef std::vector<SideRecord> Side;
         typedef std::unordered_map<order_id_t, open_order> active_order_t;
-        typedef PriorityQueue<SideRecord, std::deque<SideRecord>, CompareSideRecord > Side; 
+        typedef PriorityQueue<SideRecord, std::deque<SideRecord>, CompareSideRecord > Side;
 
         bool marketableSide(Side& side, SideRecord& newRec, Execution* newExe);
 
@@ -452,7 +452,7 @@ class Book {
 
 inline std::string to_string(const SideRecord& sr, const epoch_t& epoch) {
     std::ostringstream os;
-    os << "seq=" << sr.seq << " direction=" << to_string(sr.direction) << " price=" << sr.price << " time=" 
+    os << "seq=" << sr.seq << " direction=" << to_string(sr.direction) << " price=" << sr.price << " time="
        << sinceToString(sr.time, epoch);
     return os.str();
 }

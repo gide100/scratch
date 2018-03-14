@@ -30,7 +30,7 @@ an::Login::~Login() { }
 
 std::string an::Order::to_string() const {
     std::stringstream ss;
-    ss << "id" << SEPERATOR << order_id_ << DELIMITOR  
+    ss << "id" << SEPERATOR << order_id_ << DELIMITOR
        << Message::to_string() << DELIMITOR
        << "symbol" << SEPERATOR << symbol_ ;
     return ss.str();
@@ -45,7 +45,7 @@ std::ostream& operator<<(std::ostream& os, const an::Message& msg) {
 
 
 
-std::string::const_iterator mySplit(std::pair<std::string,std::string>& res, 
+std::string::const_iterator mySplit(std::pair<std::string,std::string>& res,
                                     std::string::const_iterator myBegin, std::string::const_iterator myEnd) {
     auto myDelim=std::find(myBegin, myEnd, DELIMITOR); // one=a or one=a:two=b myDelim [end] or one=a[:]
     auto myEq=std::find(myBegin, myDelim, SEPERATOR); // myEq= one[=]
@@ -56,7 +56,7 @@ std::string::const_iterator mySplit(std::pair<std::string,std::string>& res,
          throw an::OrderError(ss.str().c_str());
     }
     res.first.assign(myBegin,myEq); //one
-    res.second.assign(++myEq,myDelim); //a  
+    res.second.assign(++myEq,myDelim); //a
 
     if (myDelim != myEnd) { //one=a[:]
         ++myDelim; // [t]wo=b
@@ -64,7 +64,7 @@ std::string::const_iterator mySplit(std::pair<std::string,std::string>& res,
     return myDelim;
 }
 
-enum InputField { None, Type, Id, Origin, Destination, Symbol, Direction, Shares, Price, Last }; 
+enum InputField { None, Type, Id, Origin, Destination, Symbol, Direction, Shares, Price, Last };
 typedef std::bitset<Last> FieldFlags;
 void checkFlags(FieldFlags expected, FieldFlags got) {
     if (expected != got) {
@@ -93,7 +93,7 @@ an::Message* an::Message::makeOrder(const std::string& input) {
     while(myBegin != myEnd) {
         used = false;
         auto myDelim = mySplit(res, myBegin, myEnd);
-        myBegin = myDelim; 
+        myBegin = myDelim;
         //std::cout << "MarkOrder: " << res.first << "," << res.second << std::endl;
         if (res.first == "type") {
             myType = res.second;
@@ -130,7 +130,7 @@ an::Message* an::Message::makeOrder(const std::string& input) {
                 myFlags.set(Direction);
 		        used = true;
             } else {
-                std::stringstream ss; 
+                std::stringstream ss;
                 ss << "Invalid direction [" << res.second << "]";
                 throw OrderError(ss.str());
             }
@@ -140,7 +140,7 @@ an::Message* an::Message::makeOrder(const std::string& input) {
             long myLong = std::strtol(res.second.c_str(), &stop, 10);
             if (*stop != '\0') {
                 throw OrderError("Invalid shares could not convert to long");
-            } 
+            }
             if ((myLong > (long)an::MAX_OUTSTANDING_SHARES) || (myLong < 0)) {
                 throw OrderError("Invalid shares - out of range");
             }
@@ -154,12 +154,12 @@ an::Message* an::Message::makeOrder(const std::string& input) {
 	        used = true;
         }
         if (!used) {
-            std::stringstream ss; 
+            std::stringstream ss;
             ss << "Unused token [" << res.first << ',' << res.second << "]";
             throw OrderError(ss.str());
 	}
         if (myFlags == myPrevFlags) {
-            std::stringstream ss; 
+            std::stringstream ss;
             ss << "Repeated token [" << res.first << ',' << res.second << "]";
             throw OrderError(ss.str());
 	}
@@ -203,15 +203,15 @@ an::Message* an::Message::makeOrder(const std::string& input) {
         an::Login* o = new an::Login(myOrigin, myDestination);
         myOrder = o;
     } else {
-        std::stringstream ss; 
+        std::stringstream ss;
         ss << "Invalid order type [" << myType << "]";
         throw OrderError(ss.str());
     }
-    
+
     if ((myType != "LOGIN") && (myId == 0)) {
         throw OrderError("Invalid id set to 0");
     }
-         
+
     return myOrder;
 }
 
@@ -226,7 +226,7 @@ void an::Execution::pack(an::SideRecord& rec) const {
 std::string an::Execution::to_string() const {
     std::stringstream ss;
     ss << Order::to_string() << DELIMITOR
-       << "direction" << SEPERATOR << an::to_string(direction_) << DELIMITOR 
+       << "direction" << SEPERATOR << an::to_string(direction_) << DELIMITOR
        << "shares" << SEPERATOR << shares_;
     return ss.str();
 }
@@ -246,7 +246,7 @@ void an::LimitOrder::pack(an::SideRecord& rec) const {
 
 std::string an::LimitOrder::to_string() const {
     std::stringstream os;
-    os << "type" << SEPERATOR << "LIMIT" << DELIMITOR << Execution::to_string() << DELIMITOR 
+    os << "type" << SEPERATOR << "LIMIT" << DELIMITOR << Execution::to_string() << DELIMITOR
        << "price" << SEPERATOR << std::fixed << std::setprecision(1) << price_;
     return os.str();
 }
@@ -255,15 +255,15 @@ an::LimitOrder::~LimitOrder() { }
 
 bool an::LimitOrder::amend(amend_t a) {
     bool ok = true;
-    switch (a.field) {                                                                
-        case NONE:   break;                                                               
-        case PRICE:  price_ = a.price;                                                         
-                     break;                                                               
-        case SHARES: shares_ = a.shares; break;                                
-        default:                                                                          
+    switch (a.field) {
+        case NONE:   break;
+        case PRICE:  price_ = a.price;
+                     break;
+        case SHARES: shares_ = a.shares; break;
+        default:
             ok = false;
-            assert(false && "LimitOrder::amend invalid");                            
-    }                                                         
+            assert(false && "LimitOrder::amend invalid");
+    }
     return ok;
 }
 
@@ -275,7 +275,7 @@ void an::MarketOrder::applyOrder(MatchingEngine& me) {
 void an::MarketOrder::pack(an::SideRecord& rec) const {
     Execution::pack(rec); rec.order_type = an::MARKET;
     if (direction_ == an::BUY) {
-        rec.price = MAX_SHARE_PRICE; // Are 0.0 priced limit SELL or high priced limit BUY 
+        rec.price = MAX_SHARE_PRICE; // Are 0.0 priced limit SELL or high priced limit BUY
     }
 }
 
@@ -286,18 +286,18 @@ std::string an::MarketOrder::to_string() const {
 }
 an::MarketOrder::~MarketOrder() { }
 
-bool an::MarketOrder::amend(amend_t a) {                                                                       
+bool an::MarketOrder::amend(amend_t a) {
     bool ok = true;
-    switch (a.field) {                                                                                    
-        case NONE:   break;                                                                                   
-        case PRICE:  ok = false; break;                                                                                   
-        case SHARES: shares_ = a.shares; break;                                                               
-        default:                                                                                              
+    switch (a.field) {
+        case NONE:   break;
+        case PRICE:  ok = false; break;
+        case SHARES: shares_ = a.shares; break;
+        default:
             ok = false;
-            assert(false && "MarketOrder::amend invalid");                                              
-    }                                                                                                         
+            assert(false && "MarketOrder::amend invalid");
+    }
     return ok;
-} 
+}
 
 
 
@@ -325,11 +325,11 @@ std::string an::AmendOrder::to_string() const {
     if (amend_.field != NONE) {
         os << DELIMITOR << amend_.get_field_name() << SEPERATOR ;
         switch (amend_.field) {
-            case NONE:   
+            case NONE:
                 os << "none"; break;
-            case PRICE:  
+            case PRICE:
                 os << std::fixed << std::setprecision(1) << amend_.price; break;
-            case SHARES: 
+            case SHARES:
                 os << amend_.shares; break;
             default:
                 os << "unknown:field_t";
@@ -347,11 +347,11 @@ std::string an::Response::to_string() const {
     if (message_ != nullptr) {
         os << message_->to_string() << DELIMITOR
            << "response" << SEPERATOR << an::to_string(response_) << DELIMITOR
-           << "text" << SEPERATOR << text_; 
+           << "text" << SEPERATOR << text_;
     } else {
         os << Message::to_string() << DELIMITOR
            << "response" << SEPERATOR << an::to_string(response_) << DELIMITOR
-           << "text" << SEPERATOR << text_; 
+           << "text" << SEPERATOR << text_;
     }
     return os.str();
 }
@@ -366,7 +366,7 @@ std::string an::TradeReport::to_string() const {
        << Message::to_string() << DELIMITOR
        << "orig_order_id" << SEPERATOR << orig_order_id_ << DELIMITOR
        << "symbol" << SEPERATOR << symbol_ << DELIMITOR
-       << "direction" << SEPERATOR << an::to_string(direction_) << DELIMITOR 
+       << "direction" << SEPERATOR << an::to_string(direction_) << DELIMITOR
        << "shares" << SEPERATOR << shares_ << DELIMITOR
        << "price" << SEPERATOR <<  std::fixed << std::setprecision(1) << price_ ;
     return os.str();

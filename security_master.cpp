@@ -7,14 +7,14 @@
 std::string  an::security_record_t::to_string() const {
     std::stringstream ss;
     ss << id << ',' << symbol << ',' << closing_price << ',' << outstanding_shares
-       << ',' << dateToString(born) ; 
+       << ',' << dateToString(born) ;
     if (has_died) {
         ss << ",Y," << dateToString(died) ;
     } else {
         ss << ",N,0000-00-00" ;
     }
     ss << ',' << (tradeable ? 'Y' : 'N') << ',' << ladder_id ;
-       
+
     return ss.str();
 }
 
@@ -83,7 +83,7 @@ void an::SecurityDatabase::updateMaps() {
 void an::TickLadder::addTickLadder(const ladder_id_t id, const tick_table_t& ladder) {
     //std::cout << "Tick ID = " << id << std::endl;
     //std::cout << ladder << std::endl;
-    ladders_.emplace(id, ladder); 
+    ladders_.emplace(id, ladder);
 }
 
 

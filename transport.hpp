@@ -18,7 +18,7 @@ namespace an {
 template <typename ConnectionHandler>
 class asio_generic_server {
     // Shared pointer to the type of the connection handler
-    using shared_handler_t = std::shared_ptr<ConnectionHandler>; 
+    using shared_handler_t = std::shared_ptr<ConnectionHandler>;
 
     public:
         // *** BROADCAST to all CLients ***
@@ -30,7 +30,7 @@ class asio_generic_server {
                 }
                 ~ClientBroadcast() { }
 
-                void join(shared_handler_t participant, msg_t client_name = ""); 
+                void join(shared_handler_t participant, msg_t client_name = "");
 
                 void leave(shared_handler_t participant);
 
@@ -61,61 +61,61 @@ class asio_generic_server {
         ClientBroadcast broadcast_;
 };
 
-template<typename ConnectionHandler>                                                                          
-void an::asio_generic_server<ConnectionHandler>::start_server(std::uint16_t port) {                           
-    // Shared pointer to the type handling the connection                                                     
-    auto handler = std::make_shared<ConnectionHandler>(io_context_, broadcast_);                              
-                                                                                                              
-    // set up the acceptor to listen on the tcp port                                                          
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), port);                                
-    acceptor_.open(endpoint.protocol());                                                                      
-    acceptor_.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));                                
-    acceptor_.bind(endpoint);                                                                                 
-    acceptor_.listen();                                                                                       
-                                                                                                              
-    acceptor_.async_accept(                                                                                   
-        handler->socket(), [=](auto ec) {                                                                     
-            // Pass handler and error code                                                                    
-            handle_new_connection(handler,ec);                                                                
-        }                                                                                                     
-    );                                                                                                        
-                                                                                                              
-    // start pool of threads to process the asio events                                                       
-    for(int i=0; i < thread_count_; ++i) {                                                                    
-        thread_pool_.emplace_back( [=]{io_context_.run();} );                                                 
-    }                                                                                                         
-}                                                                                                             
-                                                                                                              
-template<typename ConnectionHandler>                                                                          
-void an::asio_generic_server<ConnectionHandler>::wait_for() {                                                 
-    // Join the threads                                                                                       
-    for(int i=0; i < thread_count_; ++i) {                                                                    
-        thread_pool_[i].join();                                                                               
-    }                                                                                                         
+template<typename ConnectionHandler>
+void an::asio_generic_server<ConnectionHandler>::start_server(std::uint16_t port) {
+    // Shared pointer to the type handling the connection
+    auto handler = std::make_shared<ConnectionHandler>(io_context_, broadcast_);
+
+    // set up the acceptor to listen on the tcp port
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), port);
+    acceptor_.open(endpoint.protocol());
+    acceptor_.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
+    acceptor_.bind(endpoint);
+    acceptor_.listen();
+
+    acceptor_.async_accept(
+        handler->socket(), [=](auto ec) {
+            // Pass handler and error code
+            handle_new_connection(handler,ec);
+        }
+    );
+
+    // start pool of threads to process the asio events
+    for(int i=0; i < thread_count_; ++i) {
+        thread_pool_.emplace_back( [=]{io_context_.run();} );
+    }
 }
 
-template<typename ConnectionHandler>                                                                          
-void an::asio_generic_server<ConnectionHandler>::handle_new_connection(                                       
-       shared_handler_t handler, const boost::system::error_code& error ) {                                   
-    if(error){                                                                                                
-        //std::cout << "ERROR asio_generic_server<ConnectionHandler>::handle_new_connection" << std::endl;      
-        return; // Bail                                                                                       
-    }                                                                                                         
-                                                                                                              
-    handler->start(); // Start the handler                                                                    
-    broadcast_.join(handler);                                                                                 
-    broadcast_.deliver("Welcome Client\n");                                                                   
-                                                                                                              
-    // Create new handler for next connnection that will come in.                                             
-    auto new_handler = std::make_shared<ConnectionHandler>(io_context_, broadcast_);                          
-                                                                                                              
-    // Start accept with myself                                                                               
-    acceptor_.async_accept(                                                                                   
-        new_handler->socket(), [=](auto ec) {                                                                 
-            handle_new_connection(new_handler,ec);                                                            
-        }                                                                                                     
-    );                                                                                                        
-}       
+template<typename ConnectionHandler>
+void an::asio_generic_server<ConnectionHandler>::wait_for() {
+    // Join the threads
+    for(int i=0; i < thread_count_; ++i) {
+        thread_pool_[i].join();
+    }
+}
+
+template<typename ConnectionHandler>
+void an::asio_generic_server<ConnectionHandler>::handle_new_connection(
+       shared_handler_t handler, const boost::system::error_code& error ) {
+    if(error){
+        //std::cout << "ERROR asio_generic_server<ConnectionHandler>::handle_new_connection" << std::endl;
+        return; // Bail
+    }
+
+    handler->start(); // Start the handler
+    broadcast_.join(handler);
+    broadcast_.deliver("Welcome Client\n");
+
+    // Create new handler for next connnection that will come in.
+    auto new_handler = std::make_shared<ConnectionHandler>(io_context_, broadcast_);
+
+    // Start accept with myself
+    acceptor_.async_accept(
+        new_handler->socket(), [=](auto ec) {
+            handle_new_connection(new_handler,ec);
+        }
+    );
+}
 
 
 
@@ -124,7 +124,7 @@ void an::asio_generic_server<ConnectionHandler>::handle_new_connection(
 // Communicates with the client
 class chat_handler : public std::enable_shared_from_this<chat_handler> {
     public:
-        chat_handler(boost::asio::io_context& context, 
+        chat_handler(boost::asio::io_context& context,
                      asio_generic_server<chat_handler>::ClientBroadcast& broadcast)
             : context_(context), socket_(context_), write_strand_(context_), broadcast_(broadcast) {
         }
@@ -136,16 +136,16 @@ class chat_handler : public std::enable_shared_from_this<chat_handler> {
         void start() {
             read_packet(); // Start our operations
         }
-    
+
         // Can't write to multiple times to the send.
         // Post to queue the work to get done.
         void send(std::string msg) {
             //std::cout << "chat_handler::send " << msg << std::endl;
-            context_.post( 
+            context_.post(
                 write_strand_.wrap(
                     [me=shared_from_this(),msg]() {
                          me->queue_message(msg);
-                    } 
+                    }
                 )
             );
          }
