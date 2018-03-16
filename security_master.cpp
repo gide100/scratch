@@ -31,15 +31,16 @@ std::string an::tick_table_row_t::to_string() const {
     } else {
         ss << "          " ;
     }
-    ss << " " << increment ;
+    ss << " " << tick_size ;
     return ss.str();
 }
 
-std::ostream& operator<<(std::ostream& os, const an::tick_table_t& tt) {
-    for (auto ttr : tt.rows) {
+std::string an::TickTable::to_string() const {
+    std::ostringstream os;
+    for (auto ttr : rows_) {
         os << ttr.to_string() << std::endl;
     }
-    return os ;
+    return os.str() ;
 }
 
 void an::SecurityDatabase::loadData(const std::string& filename) {
@@ -80,7 +81,7 @@ void an::SecurityDatabase::updateMaps() {
     std::cout << "DEBUG MSFT=" <<  symbol_loc_.find("MSFT")->second << std::endl ;
 }
 
-void an::TickLadder::addTickLadder(const ladder_id_t id, const tick_table_t& ladder) {
+void an::TickLadder::addTickLadder(const ladder_id_t id, const TickTable& ladder) {
     //std::cout << "Tick ID = " << id << std::endl;
     //std::cout << ladder << std::endl;
     ladders_.emplace(id, ladder);
@@ -91,18 +92,18 @@ void an::TickLadder::loadData(const std::string& filename) {
     io::CSVReader<3, io::trim_chars<>, io::no_quote_escape<'|'> > in(filename); // TICKETABLE|THRESHOLD|INCREMENT
     in.read_header(io::ignore_no_column,
         "TICKETABLE","THRESHOLD","INCREMENT" );
-    an::ladder_id_t id; an::price_t threshold; an::price_t increment;
-    an::tick_table_t tt;
+    an::ladder_id_t id; an::price_t threshold; an::price_t tick_size;
+    an::TickTable tt;
     an::ladder_id_t prev_id = 0;
-    while( in.read_row(id, threshold, increment) ) {
-        //std::cout << id << ',' << threshold << ',' << increment << std::endl;
+    while( in.read_row(id, threshold, tick_size) ) {
+        //std::cout << id << ',' << threshold << ',' << tick_size << std::endl;
         if (prev_id != id) {
             if (prev_id !=0) {
                 addTickLadder(prev_id, tt);
             }
             tt.reset();
         }
-        an::tick_table_row_t ttr(threshold, increment);;
+        an::tick_table_row_t ttr(threshold, tick_size);;
         tt.add(ttr);
         prev_id = id;
     }
@@ -111,3 +112,13 @@ void an::TickLadder::loadData(const std::string& filename) {
         addTickLadder(id, tt);
     }
 }
+
+std::string an::TickLadder::to_string() const {
+    std::ostringstream os;
+    for (const auto& tt : ladders_) {
+        os << "[" << tt.first << "]" << std::endl
+           << tt.second.to_string() << std::endl;
+    }
+    return os.str();
+}
+
