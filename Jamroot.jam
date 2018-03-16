@@ -59,4 +59,5 @@ exe info : info.cpp system thread ;
 exe do_order : do_order.cpp order.cpp security_master.cpp matching_engine.cpp system thread ;
 exe unittest_example : unittest_example.cpp system thread unittest ;
 exe unittest_order : unittest_order.cpp order.cpp matching_engine.cpp system thread unittest ;
+exe unittest_security : unittest_security.cpp security_master.cpp system thread unittest ;
 exe do_transport : do_transport.cpp transport.cpp system thread ;
