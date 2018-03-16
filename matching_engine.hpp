@@ -93,82 +93,91 @@ struct SideRecord {
     bool        matched;
 };
 
+struct bookkeeper_stats_t {
+    bookkeeper_stats_t() :
+              shares_traded(0), volume(0.0), trades(0), cancels(0), amends(0), rejects(0),
+              daily_high(0.0), daily_low(0.0),
+              open_price(0.0), close_price(0.0),
+              avg_share_price(0.0), last_trade_price(0.0), last_trade_time() {
+    }
+    shares_t        shares_traded;
+    volume_t        volume;
+    counter_t       trades; // If zero no trading, last_trade_time_ invalid, etc
+    counter_t       cancels;
+    counter_t       amends;
+    counter_t       rejects;
+    price_t         daily_high;
+    price_t         daily_low;
+    price_t         open_price;
+    price_t         close_price;
+    price_t         avg_share_price;
+    price_t         last_trade_price;
+    since_t         last_trade_time;
+}; 
 
 class Bookkeeper {
     public:
         Bookkeeper(date_t date, price_t previous_close, const epoch_t& epoch)
-            : trading_date_(date), epoch_(epoch), previous_close_(previous_close),
-              shares_traded_(0), volume_(0.0), trades_(0), cancels_(0), amends_(0), rejects_(0),
-              daily_high_(0.0), daily_low_(0.0),
-              open_price_(0.0), close_price_(0.0),
-              avg_share_price_(0.0), last_trade_price_(0.0), last_trade_time_() {
+            : trading_date_(date), epoch_(epoch), previous_close_(previous_close), bks_() {
         }
         ~Bookkeeper() { }
 
+        const bookkeeper_stats_t& stats() const {
+            return bks_;
+        }
+
         void trade(direction_t direction, shares_t shares, price_t price, since_t since) {
-            shares_traded_ += shares;
-            volume_ += price * shares;
-            if (trades_ == 0) {
-                daily_high_ = price;
-                daily_low_ = price;
-                open_price_ = price;
+            bks_.shares_traded += shares;
+            bks_.volume += price * shares;
+            if (bks_.trades == 0) {
+                bks_.daily_high = price;
+                bks_.daily_low = price;
+                bks_.open_price = price;
             } else {
-                daily_high_ = std::max(daily_high_,price);
-                daily_low_ = std::min(daily_low_,price);
+                bks_.daily_high = std::max(bks_.daily_high,price);
+                bks_.daily_low = std::min(bks_.daily_low,price);
             }
-            ++trades_;
-            last_trade_price_ = price;
-            last_trade_time_ = since;
+            ++bks_.trades;
+            bks_.last_trade_price = price;
+            bks_.last_trade_time = since;
         }
         void cancel() {
-            ++cancels_;
+            ++bks_.cancels;
         }
         void amend() {
-            ++amends_;
+            ++bks_.amends;
         }
         void reject() {
-            ++rejects_;
+            ++bks_.rejects;
         }
         void close() {
-            close_price_ = last_trade_price_;
-            if (trades_ !=0) {
-                avg_share_price_ = volume_ / shares_traded_;
+            bks_.close_price = bks_.last_trade_price;
+            if (bks_.trades !=0) {
+                bks_.avg_share_price = bks_.volume / bks_.shares_traded;
             }
         }
         std::string to_string(bool verbose = false) {
             std::ostringstream os;
             os << dateToString(trading_date_) << " prev=" << previous_close_
-               << " shares=" << shares_traded_ << " volume=" << volume_
-               << " trades=" << trades_ << " cancels=" << cancels_
-               << " amends=" << amends_ << " rejects=" << rejects_;
-                if (trades_ != 0) {
-                    os << " high=" << daily_high_ << " low=" << daily_low_
-                       << " open=" << open_price_ << " close=" << close_price_
-                       << " avg=" << avg_share_price_
-                       << " last_price=" << last_trade_price_
-                       << " last_time=" << sinceToString(last_trade_time_,epoch_);
+               << " shares=" << bks_.shares_traded << " volume=" << bks_.volume
+               << " trades=" << bks_.trades << " cancels=" << bks_.cancels
+               << " amends=" << bks_.amends << " rejects=" << bks_.rejects;
+                if (bks_.trades != 0) {
+                    os << " high=" << bks_.daily_high << " low=" << bks_.daily_low
+                       << " open=" << bks_.open_price << " close=" << bks_.close_price
+                       << " avg=" << bks_.avg_share_price
+                       << " last_price=" << bks_.last_trade_price
+                       << " last_time=" << sinceToString(bks_.last_trade_time,epoch_);
                 } else {
                     os << " high=N/A low=N/A open=N/A close=N/A avg=N/A last_price=N/A last_time=N/A";
                 }
             return os.str();
         }
     private:
-        date_t          trading_date_;
-        const epoch_t&  epoch_;
-        price_t         previous_close_;
-        shares_t        shares_traded_;
-        volume_t        volume_;
-        counter_t       trades_; // If zero no trading, last_trade_time_ invalid, etc
-        counter_t       cancels_;
-        counter_t       amends_;
-        counter_t       rejects_;
-        price_t         daily_high_;
-        price_t         daily_low_;
-        price_t         open_price_;
-        price_t         close_price_;
-        price_t         avg_share_price_;
-        price_t         last_trade_price_;
-        since_t         last_trade_time_;
+        date_t             trading_date_;
+        const epoch_t&     epoch_;
+        price_t            previous_close_;
+        bookkeeper_stats_t bks_;
 };
 
 
@@ -354,6 +363,9 @@ class Book {
                     assert(false && "marketableOrBook Unknown order_type");
                 }
             }
+        }
+        const Bookkeeper& bookkeeper() const {
+            return bookkeeper_;
         }
     private:
         void sendResponse(Message* o, response_t r, text_t t) {
