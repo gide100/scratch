@@ -65,16 +65,18 @@ int main() {
     auto amd10b = make_unique_ptr(new an::AmendOrder(201,"Client1",an::ME,"MSFT",94.5));
     std::cout << *amd10b << std::endl;
 
+    std::cout << " *** TICK ***" << std::endl;
+    an::TickLadder tickdb;
+    tickdb.loadData("NXT_ticksize.txt");
+    std::cout << tickdb.to_string()  << std::endl;
+
+
     std::cout << " *** SECDB ***" << std::endl;
-    an::SecurityDatabase secdb(an::ME);
+    an::SecurityDatabase secdb(an::ME, tickdb);
     secdb.loadData("security_database.csv");
     for (auto const& s : secdb.securities()) {
         std::cout << s.to_string() << std::endl;
     }
-
-    std::cout << " *** TICK ***" << std::endl;
-    an::TickLadder tickdb;
-    tickdb.loadData("NXT_ticksize.txt");
 
     std::cout << " *** ME ***" << std::endl;
     an::MatchingEngine me(an::ME, secdb, true);
