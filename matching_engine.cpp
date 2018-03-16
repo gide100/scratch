@@ -4,13 +4,19 @@
 #include <boost/format.hpp>
 
 
-an::MatchingEngine::MatchingEngine(const an::location_t& exchange, SecurityDatabase& secdb, bool bookkeep)
+an::MatchingEngine::MatchingEngine(const an::location_t& exchange, SecurityDatabase& secdb, 
+                                   bool bookkeep)
              : seq_(1),
              epoch_{ std::chrono::steady_clock::now(), std::chrono::system_clock::now() },
              exchange_(exchange), secdb_(secdb) {
     book_.reserve(secdb.securities().size() *2);
     for (const auto& sec : secdb.securities() ) {
-        book_.emplace_back(sec.symbol,epoch_, bookkeep, sec.closing_price);
+        TickTable* ttPtr = secdb.tickTable(sec.ladder_id);
+        if (ttPtr == nullptr) {
+            std::cout << sec.symbol << " skipping invalid tick_ladder_id " << sec.ladder_id << std::endl;
+            continue;
+        }
+        book_.emplace_back(sec.symbol,epoch_, *ttPtr, bookkeep, sec.closing_price);
         if (!sec.has_died) {
             book_.back().open();
         }

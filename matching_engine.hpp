@@ -29,7 +29,8 @@ inline static std::string sinceToString(since_t time, const epoch_t& epoch) {
 
 class MatchingEngine {
     public:
-        MatchingEngine(const an::location_t& exchange, SecurityDatabase& secdb, bool bookkeep=true);
+        MatchingEngine(const an::location_t& exchange, SecurityDatabase& secdb, 
+                       bool bookkeep=true);
         ~MatchingEngine();
 
         void close();
@@ -218,17 +219,22 @@ struct PriorityQueue : std::priority_queue<T,C,P> {
     typename C::const_iterator cend() const { return std::priority_queue<T, C, P>::c.cend(); }
 };
 
+
+
+
+class TickTable ;
+
 class Book {
     public:
-        explicit Book(symbol_t sym, epoch_t& epoch, bool bookkeep, price_t closing_price)
-            : symbol_(sym), open_(false), active_order_(), buy_(), sell_(), epoch_(epoch),
+        explicit Book(symbol_t sym, epoch_t& epoch, TickTable& tt, bool bookkeep, price_t closing_price)
+            : symbol_(sym), open_(false), active_order_(), buy_(), sell_(), epoch_(epoch), tick_table_(tt),
               bookkeep_(bookkeep),
               bookkeeper_(
                 std::chrono::system_clock::to_time_t(date::floor<date::days>(std::chrono::system_clock::now())),
                 closing_price, epoch_) {
         }
         Book(const Book& book)
-            : symbol_(book.symbol_), epoch_(book.epoch_),
+            : symbol_(book.symbol_), epoch_(book.epoch_), tick_table_(book.tick_table_),
               bookkeep_(book.bookkeep_), bookkeeper_(book.bookkeeper_) {
             assert(book.open_!=true && "Cannot copy open book");
         }
@@ -445,6 +451,7 @@ class Book {
         Side buy_;
         Side sell_;
         epoch_t& epoch_;
+        TickTable& tick_table_;
         bool bookkeep_;
         Bookkeeper bookkeeper_;
 }; // Book
