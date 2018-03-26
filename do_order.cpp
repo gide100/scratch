@@ -114,7 +114,7 @@ int main() {
 
     std::cout << "===============================" << std::endl;
     while (!side.empty()) {
-        std::cout << an::to_string(side.top(), me.epoch()) << std::endl;
+        std::cout << side.top().to_string(me.epoch()) << std::endl;
         side.pop();
     }
     std::cout << "===============================" << std::endl;
