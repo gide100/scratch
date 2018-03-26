@@ -181,7 +181,7 @@ class Response : public Message {
             }
             if ((text_.find(':')!=text_t::npos) || (text_.find('=')!=text_t::npos) ||
                 (text_.find('\n')!=text_t::npos)) {
-                throw OrderError("Cannot have [:|=\\n] in Response text");
+                throw OrderError("Cannot have [:|=|\\n] in Response text");
             }
             m->reverse_direction();
         }
@@ -189,7 +189,7 @@ class Response : public Message {
              : Message(origin,ME), message_(nullptr), response_(response), text_(text) {
             if ((text_.find(':')!=text_t::npos) || (text_.find('=')!=text_t::npos) ||
                 (text_.find('\n')!=text_t::npos)) {
-                throw OrderError("Cannot have [:|=\\n] in Response text");
+                throw OrderError("Cannot have [:|=|\\n] in Response text");
             }
             reverse_direction();
         }

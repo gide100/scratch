@@ -247,7 +247,7 @@ void an::LimitOrder::pack(an::SideRecord& rec) const {
 std::string an::LimitOrder::to_string() const {
     std::stringstream os;
     os << "type" << SEPERATOR << "LIMIT" << DELIMITOR << Execution::to_string() << DELIMITOR
-       << "price" << SEPERATOR << std::fixed << std::setprecision(1) << price_;
+       << "price" << SEPERATOR << floatDecimalPlaces(price_,MAX_PRICE_PRECISION) ;
     return os.str();
 }
 an::LimitOrder::~LimitOrder() { }
@@ -328,7 +328,7 @@ std::string an::AmendOrder::to_string() const {
             case NONE:
                 os << "none"; break;
             case PRICE:
-                os << std::fixed << std::setprecision(1) << amend_.price; break;
+                os << floatDecimalPlaces(amend_.price,MAX_PRICE_PRECISION); break;
             case SHARES:
                 os << amend_.shares; break;
             default:
@@ -368,7 +368,7 @@ std::string an::TradeReport::to_string() const {
        << "symbol" << SEPERATOR << symbol_ << DELIMITOR
        << "direction" << SEPERATOR << an::to_string(direction_) << DELIMITOR
        << "shares" << SEPERATOR << shares_ << DELIMITOR
-       << "price" << SEPERATOR <<  std::fixed << std::setprecision(1) << price_ ;
+       << "price" << SEPERATOR << floatDecimalPlaces(price_,MAX_PRICE_PRECISION) ;
     return os.str();
 }
 
