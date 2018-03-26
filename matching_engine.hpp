@@ -29,7 +29,7 @@ inline static std::string sinceToString(since_t time, const epoch_t& epoch) {
 
 class MatchingEngine {
     public:
-        MatchingEngine(const an::location_t& exchange, SecurityDatabase& secdb, 
+        MatchingEngine(const an::location_t& exchange, SecurityDatabase& secdb,
                        bool bookkeep=true);
         ~MatchingEngine();
 
@@ -82,6 +82,12 @@ class MatchingEngine {
 
 
 struct SideRecord {
+    std::string to_string(const epoch_t& epoch) const {
+        std::ostringstream os;
+        os << "seq=" << seq << " direction=" << an::to_string(direction) << " price=" << price << " time="
+           << an::sinceToString(time, epoch);
+        return os.str();
+    }
     order_id_t  id;
     sequence_t  seq;
     since_t     time;
@@ -90,7 +96,51 @@ struct SideRecord {
     price_t     price;
     shares_t    shares;
     bool        visible;
-    bool        matched;
+    bool        on_book;
+};
+
+// In the priority queue SELL (ASK) should be ascending price/time, conversely
+// in BUY (BID) the price should descending price/ascedning time.
+// For convenience added price_desc_ as sometimes we want to show output in descending price.
+struct CompareSideRecord {
+    CompareSideRecord(bool one_list=false) : one_list_(one_list) {}
+    typedef const SideRecord& first_argument_type;
+    typedef const SideRecord& second_argument_type;
+    bool operator()(const SideRecord& lhs, const SideRecord& rhs) const {
+        bool result = false;
+        if (lhs.direction != rhs.direction) {
+            result = lhs.direction < rhs.direction;
+        } else if (one_list_  && (lhs.price != rhs.price)) {
+            result = lhs.price < rhs.price; // Descending
+        } else if (!one_list_ && (lhs.price != rhs.price)) {
+            result = ((lhs.direction==an::BUY)  && lhs.price < rhs.price) ||
+                     ((lhs.direction==an::SELL) && lhs.price > rhs.price) ;
+        } else if (one_list_ && (lhs.time != rhs.time)) {
+            result = ((lhs.direction==an::BUY)  && (lhs.time > rhs.time)) || // Ascending times
+                     ((lhs.direction==an::SELL) && (lhs.time < rhs.time)) ;  // Descending times
+        } else if (!one_list_ && (lhs.time != rhs.time)) {
+            result = lhs.time > rhs.time; // Ascending times
+        } else {
+            result = lhs.seq > rhs.seq; // Ascending sequence
+        }
+        return result;
+    }
+
+    bool one_list_; // Output in one list
+};
+
+static const SideRecord DefaultSideRecord =
+   { .id=0, .seq=0, .time=since_t(), .order_type=an::LIMIT,
+     .direction=an::BUY, .price=0.0, .shares=0, .visible=false, .on_book=false };
+
+
+
+struct side_stat_t {
+    side_stat_t() : trades(0), shares(0), value(0.0), volume(0.0) { }
+    counter_t         trades; // Active trades
+    shares_t          shares; // Total number of shares in active trades
+    volume_t          value;  // Sum product of the active shares and prices
+    volume_t          volume; // Cumulative value of shares/prices added to book
 };
 
 struct bookkeeper_stats_t {
@@ -106,6 +156,8 @@ struct bookkeeper_stats_t {
     counter_t       cancels;
     counter_t       amends;
     counter_t       rejects;
+    side_stat_t     buy;
+    side_stat_t     sell;
     price_t         daily_high;
     price_t         daily_low;
     price_t         open_price;
@@ -113,19 +165,21 @@ struct bookkeeper_stats_t {
     price_t         avg_share_price;
     price_t         last_trade_price;
     since_t         last_trade_time;
-}; 
+};
 
 class Bookkeeper {
     public:
         Bookkeeper(date_t date, price_t previous_close, const epoch_t& epoch)
-            : trading_date_(date), epoch_(epoch), previous_close_(previous_close), bks_() {
+            : trading_date_(date), epoch_(epoch), previous_close_(previous_close), cmp_(false), bks_() {
         }
+        Bookkeeper(const Bookkeeper& bk) = default;
         ~Bookkeeper() { }
 
         const bookkeeper_stats_t& stats() const {
             return bks_;
         }
 
+        // Orders
         void trade(direction_t direction, shares_t shares, price_t price, since_t since) {
             bks_.shares_traded += shares;
             bks_.volume += price * shares;
@@ -150,6 +204,48 @@ class Bookkeeper {
         void reject() {
             ++bks_.rejects;
         }
+
+        // Side
+        void addSide(const SideRecord& side) {
+            side_stat_t* s = &bks_.sell;
+            if (side.direction == BUY) {
+                s = &bks_.buy;
+            }
+            ++s->trades;
+            s->shares += side.shares;
+            s->value += side.shares * side.price;
+            s->volume += side.shares * side.price;
+        }
+        // Re-add volume of amended records
+        void addSideVolume(const SideRecord& side) {
+            side_stat_t* s = &bks_.sell;
+            if (side.direction == BUY) {
+                s = &bks_.buy;
+            }
+            s->volume += side.shares * side.price;
+        }
+        void removeSide(const SideRecord& side, bool removeVolume=false) {
+            side_stat_t* s = &bks_.sell;
+            if (side.direction == BUY) {
+                s = &bks_.buy;
+            }
+            --s->trades;
+            s->shares -= side.shares;
+            s->value -= side.shares * side.price;
+            if (removeVolume) {
+                s->volume -= side.shares * side.price;
+            }
+        }
+        void amendSide(const SideRecord& side, shares_t oldShares) {
+            side_stat_t* s = &bks_.sell;
+            if (side.direction == BUY) {
+                s = &bks_.buy;
+            }
+            s->shares += (side.shares - oldShares);
+            s->value  += (side.shares - oldShares) * side.price;
+            s->volume += (side.shares - oldShares) * side.price;
+        }
+
         void close() {
             bks_.close_price = bks_.last_trade_price;
             if (bks_.trades !=0) {
@@ -162,58 +258,28 @@ class Bookkeeper {
                << " shares=" << bks_.shares_traded << " volume=" << bks_.volume
                << " trades=" << bks_.trades << " cancels=" << bks_.cancels
                << " amends=" << bks_.amends << " rejects=" << bks_.rejects;
-                if (bks_.trades != 0) {
-                    os << " high=" << bks_.daily_high << " low=" << bks_.daily_low
-                       << " open=" << bks_.open_price << " close=" << bks_.close_price
-                       << " avg=" << bks_.avg_share_price
-                       << " last_price=" << bks_.last_trade_price
-                       << " last_time=" << sinceToString(bks_.last_trade_time,epoch_);
-                } else {
-                    os << " high=N/A low=N/A open=N/A close=N/A avg=N/A last_price=N/A last_time=N/A";
-                }
+            if (bks_.trades != 0) {
+                os << " high=" << bks_.daily_high << " low=" << bks_.daily_low
+                   << " open=" << bks_.open_price << " close=" << bks_.close_price
+                   << " avg=" << bks_.avg_share_price
+                   << " last_price=" << bks_.last_trade_price
+                   << " last_time=" << sinceToString(bks_.last_trade_time,epoch_) ;
+            } else {
+                os << " high=N/A low=N/A open=N/A close=N/A avg=N/A last_price=N/A last_time=N/A" ;
+            }
+            os << " buy(" << bks_.buy.shares << "," << bks_.buy.value << ","
+               << bks_.buy.value << "," << bks_.buy.volume << ")"
+               << " sell(" << bks_.sell.shares << "," << bks_.sell.value << ","
+               << bks_.sell.value << "," << bks_.sell.volume << ")";
             return os.str();
         }
     private:
         date_t             trading_date_;
         const epoch_t&     epoch_;
         price_t            previous_close_;
+        CompareSideRecord  cmp_;
         bookkeeper_stats_t bks_;
 };
-
-
-// In the priority queue SELL (ASK) should be ascending price/time, conversely
-// in BUY (BID) the price should descending price/ascedning time.
-// For convenience added price_desc_ as sometimes we want to show output in descending price.
-struct CompareSideRecord {
-    CompareSideRecord(bool one_list=false) : one_list_(one_list) {}
-    typedef const SideRecord& first_argument_type;
-    typedef const SideRecord& second_argument_type;
-    bool operator()(const SideRecord& lhs, const SideRecord& rhs) const {
-        bool result = false;
-        if (lhs.direction != rhs.direction) {
-            result = lhs.direction < rhs.direction;
-        } else if (one_list_  && (lhs.price != rhs.price)) {
-            result = lhs.price < rhs.price;
-        } else if (!one_list_ && (lhs.price != rhs.price)) {
-            result = ((lhs.direction==an::BUY)  && lhs.price < rhs.price) ||
-                     ((lhs.direction==an::SELL) && lhs.price > rhs.price) ;
-        } else if (one_list_ && (lhs.time != rhs.time)) {
-            result = lhs.time > rhs.time; // Ascending times
-        } else if (!one_list_ && (lhs.time != rhs.time)) {
-            result = ((lhs.direction==an::BUY)  && (lhs.time > rhs.time)) || // Ascending times
-                     ((lhs.direction==an::SELL) && (lhs.time < rhs.time)) ;  // Descending times
-        } else {
-            result = lhs.seq > rhs.seq; // Ascending sequence
-        }
-        return result;
-    }
-
-    bool one_list_; // Output in one list
-};
-
-static const SideRecord DefaultSideRecord =
-   { .id=0, .seq=0, .time=since_t(), .order_type=an::LIMIT,
-     .direction=an::BUY, .price=0.0, .shares=0, .visible=false, .matched=false };
 
 
 // Priority queue with accessible Container type.
@@ -228,7 +294,100 @@ struct PriorityQueue : std::priority_queue<T,C,P> {
     typename C::const_iterator cend() const { return std::priority_queue<T, C, P>::c.cend(); }
 };
 
+class Side {
+    public:
+        Side(Bookkeeper& bookkeeper, direction_t direction, const epoch_t& epoch) 
+            : bookkeeper_(bookkeeper), direction_(direction), epoch_(epoch) {}
+        Side(const Side& s) : q_(s.q_), bookkeeper_(s.bookkeeper_), 
+            direction_(s.direction_), epoch_(s.epoch_) {}
+        ~Side() {}
 
+        std::string to_string(bool verbose) const;
+
+        void add(SideRecord& rec) {
+            assert(rec.visible && "Side.add record not visible");
+            assert(rec.direction == direction_ && "Side.add wrong direction");
+            rec.on_book = true;
+            q_.push(rec);
+            bookkeeper_.addSide(rec);
+        }
+        void addVolume(SideRecord& rec) {
+            bookkeeper_.addSideVolume(rec);
+        }
+        void remove(SideRecord& rec, bool removeVolume = false) {
+            assert(rec.direction == direction_ && "Side.remove wrong direction");
+            rec.visible = false;
+            normalise();
+            bookkeeper_.removeSide(rec, removeVolume);
+        }
+
+        void removeTop( bool removeVolume = false ) {
+            assert(!q_.empty() && "removeTop from empty queue");
+            assert(q_.begin()->id == top().id && "removeTop first vector element and top same"),
+            remove(*q_.begin(),removeVolume); // front()
+        }
+
+        void amendShares(SideRecord& rec, shares_t oldShares) {
+            assert(rec.direction == direction_ && "Side.amend wrong direction");
+            bookkeeper_.amendSide(rec, oldShares);
+        }
+        void amendSharesTop(shares_t diffShares) {
+            assert(!q_.empty() && "amendSharesTop from empty queue");
+            SideRecord& rec = *q_.begin(); // front()
+            shares_t oldShares = rec.shares;
+            rec.shares += diffShares;
+            amendShares(rec, oldShares);
+        }
+
+        bool empty() const {
+            return q_.empty();
+        }
+
+        void pop() {
+            q_.pop();
+            normalise();
+        }
+
+        SideRecord top() {
+            return q_.top();
+        }
+
+        struct MatchOrderId { // Functor
+            explicit MatchOrderId(an::order_id_t order_id) : order_id_(order_id) { }
+            bool operator()(const an::SideRecord& rec) const { return rec.id == order_id_; }
+            an::order_id_t order_id_;
+        };
+        SideRecord* findRecord(order_id_t id) {
+            SideRecord* found = nullptr;
+            auto it = std::find_if(q_.begin(), q_.end(), MatchOrderId(id));
+            if (it != q_.end()) {
+                found = &(*it);
+            }
+            return found;
+        }
+        const auto& q() const {
+            return q_;
+        }
+        using container_type = std::deque<SideRecord>;
+        using value_compare = CompareSideRecord;
+        using Q = PriorityQueue<SideRecord, container_type, value_compare > ;
+    private:
+        // Remove non-visible elements from top
+        void normalise() {
+            while (!q_.empty()) {
+                const SideRecord& top = q_.top();
+                if(!top.visible) {
+                    q_.pop();
+                } else {
+                    break;
+                }
+            }
+        }
+        Q q_;
+        Bookkeeper& bookkeeper_;
+        direction_t direction_;
+        const epoch_t& epoch_;
+};
 
 
 class TickTable ;
@@ -236,17 +395,19 @@ class TickTable ;
 class Book {
     public:
         explicit Book(symbol_t sym, epoch_t& epoch, TickTable& tt, bool bookkeep, price_t closing_price)
-            : symbol_(sym), open_(false), active_order_(), buy_(), sell_(), epoch_(epoch), tick_table_(tt),
-              bookkeep_(bookkeep),
-              bookkeeper_(
+            : symbol_(sym), open_(false), active_order_(), epoch_(epoch), tick_table_(tt), 
+              bookkeep_(bookkeep), bookkeeper_(
                 std::chrono::system_clock::to_time_t(date::floor<date::days>(std::chrono::system_clock::now())),
-                closing_price, epoch_) {
+                closing_price, epoch_), 
+              buy_(bookkeeper_, an::BUY, epoch_), sell_(bookkeeper_, an::SELL, epoch_) {
         }
+
         Book(const Book& book)
             : symbol_(book.symbol_), epoch_(book.epoch_), tick_table_(book.tick_table_),
-              bookkeep_(book.bookkeep_), bookkeeper_(book.bookkeeper_) {
+              bookkeep_(book.bookkeep_), bookkeeper_(book.bookkeeper_), buy_(book.buy_), sell_(book.sell_) {
             assert(book.open_!=true && "Cannot copy open book");
         }
+
         Book& operator=(const Book& book) = delete;
         ~Book() { assert(!open_); };
 
@@ -261,20 +422,25 @@ class Book {
             assert(active_order_.empty() && "active orders empty after closeBook()");
         }
         bool matchSymbol(const symbol_t& symbol) { return symbol == symbol_; }
-        // Activate Orders
+
+        // Live orders, used for lookups
         void addActiveOrder(order_id_t id, std::unique_ptr<Execution> o, direction_t d) {
             active_order_.emplace(id, std::move(open_order{id, std::move(o), d}));
         }
+
         void addSideRecord(SideRecord& rec) {
+            assert(rec.visible && "addSideRecord non-visible record added");
+
             // Add to queue
             if (rec.direction == an::BUY) {
-                 buy_.push(rec);
+                 buy_.add(rec);
             } else if (rec.direction == an::SELL) {
-                 sell_.push(rec);
+                 sell_.add(rec);
             } else {
-                assert(false); // Unknown direction
+                assert(false && "addSideRecord unknown direction"); // Unknown direction
             }
         }
+
         void cancelActiveOrder(order_id_t id, std::unique_ptr<CancelOrder> o) {
             if (!open_) {
                 sendReject(o.get(), "book not open");
@@ -282,7 +448,12 @@ class Book {
             }
             SideRecord* recPtr = findSideRecord(id);
             if (recPtr != nullptr) {
-                recPtr->visible = false;
+                if (recPtr->direction == an::BUY) {
+                    buy_.remove(*recPtr);
+                } else {
+                    sell_.remove(*recPtr);
+                }
+                assert(recPtr->visible == false && "cancelActiveOrder non-visible");
                 Execution* exe = findActiveOrder(id);
                 assert(exe != nullptr && "cancelActiveOrder order not found"); //TODO - not required
                 sendCancel(exe,"order cancel success");
@@ -292,6 +463,7 @@ class Book {
                 sendReject(o.get(), "order not found");
             }
         }
+
         void amendActiveOrder(order_id_t id, std::unique_ptr<AmendOrder> o) {
             if (!open_) {
                 sendReject(o.get(), "book not open");
@@ -303,28 +475,35 @@ class Book {
                 if (amend.field == PRICE) {
                     bool amended = false;
                     SideRecord newRec(*recPtr);
-                    if ( ((newRec.direction==BUY)  && (amend.price <= newRec.price)) ||
-                         ((newRec.direction==SELL) && (amend.price >= newRec.price)) ) {
-                        // Away from touch, (TODO not better than touch ???)
-                        Execution* exe = findActiveOrder(id);
-                        assert(exe != nullptr && "amendActiveOrder price order not found");
-                        if ((amended = exe->amend(amend)) == true) {
-                            newRec.price = amend.price;
-                            recPtr->visible = false;
-                            newRec.visible = true;
-                            addSideRecord(newRec);
-                        }
+                    bool awayFromTouch = ((newRec.direction==BUY)  && (amend.price <= newRec.price)) ||
+                                         ((newRec.direction==SELL) && (amend.price >= newRec.price)) ;
+                    // Away from touch, (TODO not better than touch ???)
+                    Execution* exe = nullptr;
+                    std::unique_ptr<Execution> exeNew;
+                    if (awayFromTouch) {
+                        exe = findActiveOrder(id);
+                        assert(exe != nullptr && "amendActiveOrder by price order not found");
                     } else {
-                        // Towards touch, might be marketable
-                        std::unique_ptr<Execution> exe;
-                        exe.reset(findActiveOrder(id, true));
-                        assert(exe != nullptr && "amendActiveOrder price order not found");
-                        if ((amended = exe->amend(amend)) == true) {
-                            newRec.price = amend.price;
-                            // As it's an existing order check whether it is marketable
-                            recPtr->visible = false;
-                            newRec.visible = true;
-                            executeOrder(newRec,std::move(exe));
+                        exeNew.reset(findActiveOrder(id, true)); // Find and remove
+                        exe = exeNew.get();
+                    }
+
+                    if ((amended = exe->amend(amend)) == true) {
+                        Side* s = &sell_;
+                        if (newRec.direction == BUY) {
+                            s = &buy_;
+                        }
+
+                        s->remove(*recPtr, true);
+                        assert(recPtr->visible == false && "amendActiveOrder non-visible");
+                        newRec.price = amend.price;
+                        newRec.visible = true;
+                        if (awayFromTouch) {
+                            s->add(newRec); // Just change order book price and re-add
+                        } else {
+                            // Towards touch, might be marketable
+                            assert(exeNew != nullptr && "amendActiveOrder by price order (exeNew) not found");
+                            executeOrder(newRec,std::move(exeNew));
                         }
                     }
                     if (amended) {
@@ -337,7 +516,13 @@ class Book {
                     Execution* exe = findActiveOrder(id);
                     assert(exe != nullptr && "amendActiveOrder price order not found");
                     if (exe->amend(amend)) {
+                        shares_t shr = recPtr->shares;
                         recPtr->shares = amend.shares;
+                        Side* s = &sell_;
+                        if (recPtr->direction == BUY) {
+                            s = &buy_;
+                        }
+                        s->amendShares(*recPtr, shr);
                         sendAmend(o.get());
                     } else {
                         sendReject(o.get(), "Invalid amend of execution order");
@@ -347,10 +532,14 @@ class Book {
                 sendReject(o.get(), "unknown order");
             }
         }
+
         void executeOrder(SideRecord& rec, std::unique_ptr<Execution> exe) {
             if (!open_) {
                 sendReject(exe.get(),"book not open");
                 return;
+            }
+            if (findActiveOrder(rec.id) != nullptr) {
+                sendReject(exe.get(), "Order id already on book");
             }
             if (!marketable(rec, exe.get())) {
                 if (rec.order_type == LIMIT) {
@@ -360,10 +549,11 @@ class Book {
                 } else if (rec.order_type == MARKET) {
                     sendCancel(exe.get(), "no bid/ask for market order");
                 } else {
-                    assert(false && "marketableOrBook Unknown order_type");
+                    assert(false && "executeOrder unknown order_type");
                 }
             }
         }
+
         const Bookkeeper& bookkeeper() const {
             return bookkeeper_;
         }
@@ -396,6 +586,7 @@ class Book {
             sendResponse(o, an::REJECT, text);
         }
 
+        // Can the new order (execution) be satisfied without adding it to the book
         bool marketable(SideRecord& newRec, Execution* exe);
 
         void closeBook();
@@ -418,26 +609,14 @@ class Book {
             assert(count==1 && "removeActiveOrder id not found");
         }
 
-        struct MatchOrderId { // Functor
-            explicit MatchOrderId(an::order_id_t order_id) : order_id_(order_id) { }
-            bool operator()(const an::SideRecord& rec) const { return rec.id == order_id_; }
-            an::order_id_t order_id_;
-        };
         SideRecord* findSideRecord(order_id_t id) {
             SideRecord* found = nullptr;
             auto search = active_order_.find(id);
             if (search != active_order_.end()) {
-                Side::container_type::iterator it;
                 if (search->second.direction == an::BUY) {
-                    it = std::find_if(buy_.begin(), buy_.end(), MatchOrderId(id));
-                    if (it != buy_.end()) {
-                        found = &(*it);
-                    }
+                    found = buy_.findRecord(id);
                 } else {
-                    it = std::find_if(sell_.begin(), sell_.end(), MatchOrderId(id));
-                    if (it != sell_.end()) {
-                        found = &(*it);
-                    }
+                    found = sell_.findRecord(id);
                 }
             }
             return found;
@@ -453,28 +632,21 @@ class Book {
         };
         //typedef std::vector<SideRecord> Side;
         typedef std::unordered_map<order_id_t, open_order> active_order_t;
-        typedef PriorityQueue<SideRecord, std::deque<SideRecord>, CompareSideRecord > Side;
+        //typedef PriorityQueue<SideRecord, std::deque<SideRecord>, CompareSideRecord > Side;
 
         bool marketableSide(Side& side, SideRecord& newRec, Execution* newExe);
 
         symbol_t symbol_;
         bool open_;
         active_order_t active_order_;
-        Side buy_;
-        Side sell_;
         epoch_t& epoch_;
         TickTable& tick_table_;
         bool bookkeep_;
         Bookkeeper bookkeeper_;
+        Side buy_;
+        Side sell_;
 }; // Book
 
-
-inline std::string to_string(const SideRecord& sr, const epoch_t& epoch) {
-    std::ostringstream os;
-    os << "seq=" << sr.seq << " direction=" << to_string(sr.direction) << " price=" << sr.price << " time="
-       << sinceToString(sr.time, epoch);
-    return os.str();
-}
 
 } // an - namespace
 

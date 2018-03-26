@@ -1,7 +1,6 @@
 #include "types.hpp"
 #include "matching_engine.hpp"
 #include "security_master.hpp"
-#include <boost/format.hpp>
 
 
 an::MatchingEngine::MatchingEngine(const an::location_t& exchange, SecurityDatabase& secdb, 
@@ -43,16 +42,6 @@ std::string an::MatchingEngine::to_string() const {
     return os.str();
 }
 
-
-//void an::MatchingEngine::applyOrder(std::unique_ptr<LimitOrder> o) {
-//    std::unique_ptr<Execution> exe; exe.reset(o.get()); o.release();
-//    applyOrder(std::move(exe));
-//}
-//
-//void an::MatchingEngine::applyOrder(std::unique_ptr<MarketOrder> o) {
-//    std::unique_ptr<Execution> exe; exe.reset(o.get()); o.release();
-//    applyOrder(std::move(exe));
-//}
 
 void an::MatchingEngine::applyOrder(std::unique_ptr<Execution> exe) {
     SideRecord rec;
@@ -113,37 +102,91 @@ void an::MatchingEngine::sendResponse(Message* o, response_t r, text_t t) {
 
 
 // ********************************* BOOK *****************************************
+std::string an::Side::to_string(bool verbose) const {
+    std::ostringstream os;
+    if (verbose) {
+        Side::container_type data;
+        for (const auto &rec : q_) {
+            data.push_back(rec);
+        }
+        std::sort( data.begin(), data.end(), std::not2(Side::value_compare(false)) );
+        for (const auto& rec: data) {
+            os << boost::format("%1$6d %2$4d %3$1c ") % rec.id % rec.seq % (rec.visible ? '*' : '.');
+            if (direction_ == BUY) {
+                os  << boost::format("%1$4s %2$18s %3$6d ")
+                        % an::to_string_book(rec.direction) % sinceToString(rec.time,epoch_) % rec.shares
+                    << boost::format("%1$8s") % floatDecimalPlaces(rec.price,MAX_PRICE_PRECISION) ;
+            } else {
+                os  << boost::format("%1$30c ") % ' '
+                    << boost::format("%1$8s ") % floatDecimalPlaces(rec.price,MAX_PRICE_PRECISION)
+                    << boost::format("%1$6d %2$18s %3$4s") 
+                        % rec.shares % sinceToString(rec.time, epoch_) % an::to_string_book(rec.direction) ;
+            }
+            os << std::endl;
+        }
+    } else {
+        Q q(q_);
+        while (!q.empty()) {
+            os << q.top().to_string(epoch_) << std::endl;
+            q.pop();
+        }
+    }
+
+    return os.str();
+}
+
+
 bool an::Book::marketableSide(Side& side, SideRecord& newRec, Execution* newExe) {
-    bool marketable = false;
+    bool marketable = false; // Can the new order be satisfied without adding it to the book
+    // Is there something to compare against and our new order isn't complete
     while (!side.empty() && (newRec.shares!=0)) {
         marketable = false;
         SideRecord top = side.top();
-        if(!top.visible) {
-            sell_.pop();
-            continue;
-        }
+        assert(top.visible && "top should be visible");
+        assert(newRec.visible && "new record should be visible");
         if ( ((newRec.direction==an::BUY)  && compare3decimalplaces(newRec.price,top.price) >= 0) ||
              ((newRec.direction==an::SELL) && compare3decimalplaces(newRec.price,top.price) <= 0) ) {
-            side.pop(); // Remove top
             shares_t shares = std::min(newRec.shares,top.shares);
-            newRec.shares -= shares; // Reduce number of shares needed by newRec
-            top.shares -= shares; // New shares are less than matched (at top of book).
+            price_t price = top.price;
 
-            sendTradeReport(newExe, top.direction, shares, top.price);
+            // Find active order (from book)
             Execution* exeOld = findActiveOrder(top.id);
             assert(exeOld != nullptr && "marketable active order null");
-            sendTradeReport(exeOld, newRec.direction, shares, top.price);
-            if (top.shares == 0) {
+
+            sendTradeReport(exeOld, newRec.direction, shares, price);
+            sendTradeReport(newExe, top.direction, shares, price);
+            if (top.shares == shares) {
                 sendResponse(exeOld, an::COMPLETE, "Top Filled");
+                side.removeTop(); // Remove top
                 removeActiveOrder(top.id);
             } else {
-                sell_.push(std::move(top)); // Recover top
+                side.amendSharesTop(-shares); // top.shares -= shares
             }
-            if (newRec.shares == 0) {
+            if (newRec.shares == shares) {
                 sendResponse(newExe, an::COMPLETE, "New Filled");
+                if (newRec.on_book) {
+                    price_t pr = newRec.price; // Save value
+                    newRec.price = price;
+                    side.addVolume(newRec);
+                    newRec.price = pr; // restore
+                }
                 newRec.visible = false;
-                marketable = true;
+                marketable = true; // New order satistfied 
+            } else {
+                if (newRec.on_book) {
+                    // Add volume for shares traded
+                    shares_t shr = newRec.shares; // Save value
+                    price_t pr = newRec.price; // Save value
+                    
+                    newRec.shares = shares; 
+                    newRec.price = price;
+                    side.addVolume(newRec);
+
+                    newRec.shares = shr; // restore
+                    newRec.price = pr; // restore
+                }
             }
+            newRec.shares -= shares; // Reduce number of shares needed by newRec
         } else {
             // Not marketable if order values not matching
             break;
@@ -153,6 +196,7 @@ bool an::Book::marketableSide(Side& side, SideRecord& newRec, Execution* newExe)
 }
 
 bool an::Book::marketable(SideRecord& newRec, Execution* newExe) {
+    assert(newRec.visible && "Book::marketable new record should be visible");
     bool marketable = false;
     if (newRec.direction==an::BUY) {
         // Compare against sell
@@ -160,7 +204,7 @@ bool an::Book::marketable(SideRecord& newRec, Execution* newExe) {
     } else {
         marketable = marketableSide(buy_, newRec, newExe);
     }
-    std::cout << "id=" << newExe->orderId() << " marketable=" << marketable << std::endl;
+    std::cout << "Book::marketable" << " id=" << newExe->orderId() << " marketable=" << marketable << std::endl;
     return marketable;
 }
 
@@ -184,44 +228,12 @@ std::string an::Book::to_string(bool verbose) const {
         os << boost::format("[%1$s]") % symbol_ << std::endl
            << "    Id Seq  V Side Time               Shares Price    Shares Time               Side" << std::endl
            << "------+----+-+----+------------------+------+--------+------+------------------+----" << std::endl ;
-        Side::container_type data;
-        for (const auto& rec : sell_) {
-            data.push_back(rec);
-        }
-        std::sort( data.begin(), data.end(), std::not2(Side::value_compare(true)) );
-        for (const auto& rec: data) { // SELL
-           os << boost::format("%1$6d %2$4d %3$1c ") % rec.id % rec.seq % (rec.visible ? '*' : '.')
-              << boost::format("%1$30c ") % ' '
-              << boost::format("%1$8.3f ") % rec.price
-              << boost::format("%1$6d %2$18s %3$4s") % rec.shares % sinceToString(rec.time) % an::to_string_book(rec.direction)
-              << std::endl;
-        }
-        data.clear();
-        for (const auto &rec : buy_) {
-            data.push_back(rec);
-        }
-        std::sort( data.begin(), data.end(), std::not2(Side::value_compare(true)) );
-        for (const auto& rec: data) { // BUY
-           os << boost::format("%1$6d %2$4d %3$1c ") % rec.id % rec.seq % (rec.visible ? '*' : '.')
-              << boost::format("%1$4s %2$18s %3$6d ") % an::to_string_book(rec.direction) % sinceToString(rec.time) % rec.shares
-              << boost::format("%1$8.3f") % rec.price
-              << std::endl;
-        }
-        os << std::endl;
-
     } else {
         os << boost::format("[%1$s]") % symbol_ << std::endl;
-        Side b1(sell_);
-        while (!b1.empty()) {
-            os << an::to_string(b1.top(),epoch_) << std::endl;
-            b1.pop();
-        }
-        Side b2(buy_);
-        while (!b2.empty()) {
-            os << an::to_string(b2.top(),epoch_) << std::endl;
-            b2.pop();
-        }
     }
+    os << sell_.to_string(verbose);
+    os << buy_.to_string(verbose);
+    os << std::endl;
 
     return os.str();
 }
