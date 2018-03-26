@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE(make_orders)
 BOOST_AUTO_TEST_CASE(limit_order01) {
     an::Message* o1 = an::Order::makeOrder("origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50:type=LIMIT:id=123");
-    BOOST_CHECK_EQUAL(o1->to_string(),"type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50:price=92");
+    BOOST_CHECK_EQUAL(o1->to_string(),"type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50:price=92.0");
 }
 BOOST_AUTO_TEST_CASE(market_order01) {
     an::Message* o1 = an::Order::makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
@@ -185,8 +185,8 @@ BOOST_AUTO_TEST_SUITE(make_orders_bad)
     BOOST_AUTO_TEST_CASE(response_bad_01) {
        an::Message* o1 = an::Order::makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
        BOOST_CHECK_EQUAL(o1->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
-       BOOST_CHECK_EXCEPTION(an::Response res1(o1,an::ACK,"Error:message"), an::OrderError, CheckMessage("Cannot have [:|=] in Response text") );
-       BOOST_CHECK_EXCEPTION(an::Response res2(o1,an::ACK,"Error=message"), an::OrderError, CheckMessage("Cannot have [:|=] in Response text") );
+       BOOST_CHECK_EXCEPTION(an::Response res1(o1,an::ACK,"Error:message"), an::OrderError, CheckMessage("Cannot have [:|=|\\n] in Response text") );
+       BOOST_CHECK_EXCEPTION(an::Response res2(o1,an::ACK,"Error=message"), an::OrderError, CheckMessage("Cannot have [:|=|\\n] in Response text") );
        BOOST_CHECK_EXCEPTION(an::Response res3(nullptr,an::ACK,"OK"), an::OrderError, CheckMessage("nullptr in Response Message") );
     }  
 
