@@ -3,6 +3,7 @@
 
 
 #include <string>
+#include <sstream>
 #include <cstdint>
 #include <ctime>
 #include <chrono>
@@ -18,14 +19,18 @@
 #include <cmath>
 #include <memory>
 #include "date.h"
+#include <boost/format.hpp>
 
 namespace an {
 // Orders
 typedef std::uint64_t order_id_t;
 typedef std::string location_t;
-typedef std::uint64_t shares_t;
+typedef std::int64_t shares_t;
 typedef std::uint64_t sequence_t;
 typedef double price_t;
+const int MAX_PRICE_PRECISION = 7;
+constexpr double PRICE_EPSILON = 1.0/std::pow(10,an::MAX_PRICE_PRECISION);
+
 enum direction_t { BUY, SELL };
 enum order_t { LIMIT, MARKET, CANCEL, AMEND };
 enum response_t { ACK, COMPLETE, REJECT, CANCELLED, UNKNOWN, ERROR }; 
@@ -107,6 +112,31 @@ inline std::string dateToString(date_t myDate) {
 }
 
 
+inline double roundTo(double price, int decimal_places) {
+    double multiplier = std::pow(10,decimal_places);
+    price*=multiplier;
+    if( price >= 0.0 ) {
+        price = std::floor(price + 0.5);
+    }
+    price = std::ceil(price - 0.5);
+    return price / multiplier;
+}
+
+inline double roundToAny(double number, double round_value) {
+    assert(round_value >= 0.0 && "roundToAny negative round_value not allowed");
+    if (round_value != 0.0 && number != 0.0) {
+        double sign = (number > 0.0) ? 1.0 : -1.0;
+        number *= sign;
+        number /= round_value;
+        //long fixedPoint = (long) std::floor(number+0.5);
+        number = std::floor(number+0.5) * round_value;
+        number *= sign;
+    }
+    //std::cout << "roundToAny=" << number << std::endl;
+    return number;
+}
+
+
 inline double truncate(double d) {
     return (d>0) ? std::floor(d) : std::ceil(d) ; 
 }
@@ -125,6 +155,36 @@ inline int compare3decimalplaces(double lhs, double rhs) {
         result = 0;
     }
     return result;
+}
+
+
+inline std::string floatFormat(double num, int width) {
+    if (num == 0.0) {
+        return "0.0";
+    }            
+    int d = (int)std::ceil(std::log10(num < 0 ? -num : num)); /*digits before decimal point*/
+    double order = std::pow(10.0, width - d);
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(std::max(width - d, 0)) << std::round(num * order) / order;
+    return ss.str();
+}
+
+inline std::string floatDecimalPlaces(double value, int precision) {
+    assert(precision >= 0 && "floatDecimalPlaces negative precision not allowed"); 
+    // https://stackoverflow.com/questions/900326/how-do-i-elegantly-format-string-in-c-so-that-it-is-rounded-to-6-decimal-place
+    // https://stackoverflow.com/questions/2475642/how-to-achieve-the-following-c-output-formatting
+    std::ostringstream ss;
+    ss << std::fixed << std::setprecision(precision) << value;
+    std::string s(ss.str());
+    if (precision) {
+        s.resize(s.find_last_not_of("0") + 1);
+        if (s.back() == '.') {
+            s+='0';
+        } else if (s.back() == '.') {
+           s.pop_back();
+        }
+    }
+    return s;
 }
 
 } // an - namespace
