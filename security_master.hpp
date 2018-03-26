@@ -17,7 +17,7 @@ struct tick_table_row_t {
     tick_table_row_t(price_t threshold, price_t i) : lower(threshold), upper(0.0), have_upper(false), tick_size(i) { check(); }
     void setUpper(price_t u) {
         //std::cout << "setUpper " << u << std::endl;
-        assert(have_upper && "setUpper have_upper already set");
+        assert(!have_upper && "setUpper have_upper already set");
         have_upper = true;
         upper = u; check();
     }
@@ -28,7 +28,7 @@ struct tick_table_row_t {
         if (lower < 0.0) {
             throw SecurityError("lower < 0.0");
         }
-        if (tick_size <= 0.0) {
+        if (tick_size <= PRICE_EPSILON) { // Negative or tiny
             throw SecurityError("Invalid tick size");
         }
         if (have_upper && (lower >= upper)) {
@@ -67,39 +67,15 @@ class TickTable {
             }
             rows_.push_back(tr);
         }
+
         void reset() { rows_.clear(); }
-
-        static price_t roundTo(price_t price, int decimal_places) {
-            price_t multiplier = std::pow(10,decimal_places);
-            price*=multiplier;
-            if( price >= 0.0 ) {
-                price = std::floor(price + 0.5);
-            }
-            price = std::ceil(price - 0.5);
-            return price / multiplier;
-        }
-
-        static price_t roundToAny(price_t number, price_t tick_size) {
-            assert(tick_size >= 0.0 && "roundToAny negative tick_size not allowed");
-            if (tick_size != 0.0 && number != 0.0) {
-                price_t sign = (number > 0.0) ? 1.0 : -1.0;
-                number *= sign;
-                number /= tick_size;
-                //long fixedPoint = (long) std::floor(number+0.5);
-                number = std::floor(number+0.5) * tick_size;
-                number *= sign;
-            }
-            //std::cout << "roundToAny=" << number << std::endl;
-            return number;
-        }
-
 
         bool validatePrice(price_t price) const {
             return validatePriceAndRound(price, false);
         }
-        bool validatePriceAndRound(price_t& price, bool round=true ) const {
+
+        bool validatePriceAndRound(price_t& price, bool round=true, price_t epsilon = an::PRICE_EPSILON ) const {
             assert(price >= 0 && "validatePrice negative not allowed");
-            constexpr price_t EPSILON = std::numeric_limits<price_t>::epsilon() * 100.0;
             for (const auto& ttr : rows_) {
                 if ( ( ttr.have_upper && (price >= ttr.lower) && (price < ttr.upper)) ||
                      (!ttr.have_upper && (price >= ttr.lower) ) ) {
@@ -109,7 +85,7 @@ class TickTable {
                     //          << " minus=" << std::min(div - std::floor(div),std::abs(div - std::ceil(div)))
                     //          << " epilson=" << EPSILON 
                     //          << " res=" << (std::min(div - std::floor(div),std::abs(div - std::ceil(div))) < EPSILON) << std::endl;
-                    bool res = std::min(div - std::floor(div),std::abs(div - std::ceil(div))) < EPSILON;
+                    bool res = std::min(div - std::floor(div),std::abs(div - std::ceil(div))) < epsilon;
                     if (res && round) {
                         price = roundToAny(price,ttr.tick_size);
                     }
