@@ -302,7 +302,7 @@ class Side {
             direction_(s.direction_), epoch_(s.epoch_) {}
         ~Side() {}
 
-        std::string to_string(bool verbose) const;
+        std::string to_string(bool verbose=false, bool one_list=false) const;
 
         void add(SideRecord& rec) {
             assert(rec.visible && "Side.add record not visible");
@@ -494,8 +494,7 @@ class Book {
                             s = &buy_;
                         }
 
-                        s->remove(*recPtr, true);
-                        assert(recPtr->visible == false && "amendActiveOrder non-visible");
+                        s->remove(*recPtr, true); recPtr = nullptr;
                         newRec.price = amend.price;
                         newRec.visible = true;
                         if (awayFromTouch) {

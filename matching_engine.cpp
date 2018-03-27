@@ -102,14 +102,14 @@ void an::MatchingEngine::sendResponse(Message* o, response_t r, text_t t) {
 
 
 // ********************************* BOOK *****************************************
-std::string an::Side::to_string(bool verbose) const {
+std::string an::Side::to_string(bool verbose, bool one_list) const {
     std::ostringstream os;
     if (verbose) {
         Side::container_type data;
         for (const auto &rec : q_) {
             data.push_back(rec);
         }
-        std::sort( data.begin(), data.end(), std::not2(Side::value_compare(false)) );
+        std::sort( data.begin(), data.end(), std::not2(Side::value_compare(one_list)) );
         for (const auto& rec: data) {
             os << boost::format("%1$6d %2$4d %3$1c ") % rec.id % rec.seq % (rec.visible ? '*' : '.');
             if (direction_ == BUY) {
@@ -231,8 +231,8 @@ std::string an::Book::to_string(bool verbose) const {
     } else {
         os << boost::format("[%1$s]") % symbol_ << std::endl;
     }
-    os << sell_.to_string(verbose);
-    os << buy_.to_string(verbose);
+    os << sell_.to_string(verbose, true);
+    os << buy_.to_string(verbose, true);
     os << std::endl;
 
     return os.str();
