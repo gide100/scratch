@@ -30,6 +30,7 @@ typedef std::uint64_t sequence_t;
 typedef double price_t;
 const int MAX_PRICE_PRECISION = 7;
 constexpr double PRICE_EPSILON = 1.0/std::pow(10,an::MAX_PRICE_PRECISION);
+typedef std::chrono::steady_clock::time_point since_t;
 
 enum direction_t { BUY, SELL };
 enum order_t { LIMIT, MARKET, CANCEL, AMEND };
@@ -186,6 +187,25 @@ inline std::string floatDecimalPlaces(double value, int precision) {
     }
     return s;
 }
+
+//// https://stackoverflow.com/questions/17946124/most-simple-way-to-get-string-containing-time-interval
+//inline std::string sinceToHHMMSS(since_t since) {
+//    std::ostringstream os;
+//    auto hh = std::chrono::duration_cast<std::chrono::hours>(since);
+//    since -= hh;
+//    auto mm = std::chrono::duration_cast<std::chrono::minutes>(since);
+//    since -= mm;
+//    auto ss = std::chrono::duration_cast<std::chrono::seconds>(since);
+//    since -= ss;
+//    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(since);
+//
+//    os << std::setfill('0') << std::setw(2) << hh.count() << ':'
+//       << std::setfill('0') << std::setw(2) << mm.count() << ':'
+//       << std::setfill('0') << std::setw(2) << ss.count() << '.'
+//       << std::setfill('0') << std::setw(3) << ms.count() ;
+//    return os.str();
+//}
+
 
 } // an - namespace
 
