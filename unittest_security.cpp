@@ -336,4 +336,85 @@ BOOST_AUTO_TEST_SUITE(tick_table)
         BOOST_CHECK_EXCEPTION( tt.add(an::tick_table_row_t( 1, 10, 1)), 
             an::SecurityError, CheckMessage("Overlapping ranges in tick table") );
     }
+    BOOST_AUTO_TEST_CASE(tick_ladder_load_01) {
+        an::TickTable* tt = nullptr;
+        an::TickLadder tickdb;
+        tickdb.loadData("NXT_ticksize.txt");
+
+        tt = tickdb.find(1);
+        BOOST_CHECK(tt != nullptr);
+        BOOST_CHECK_EQUAL(tt->to_string(),
+            "0        >=            0.01\n" );
+
+        tt = tickdb.find(10);
+        BOOST_CHECK(tt != nullptr);
+        BOOST_CHECK_EQUAL(tt->to_string(),
+            "0        >= < 10       0.001\n"
+            "10       >= < 50       0.005\n"
+            "50       >= < 100      0.01\n"
+            "100      >=            0.05\n" );
+
+        tt = tickdb.find(96);
+        BOOST_CHECK(tt != nullptr);
+        BOOST_CHECK_EQUAL(tt->to_string(),
+            "0        >=            1e-06\n" );
+
+        BOOST_CHECK(tickdb.find(73) != nullptr);
+        BOOST_CHECK(tickdb.find(89) != nullptr);
+        BOOST_CHECK(tickdb.find(96) != nullptr);
+
+        BOOST_CHECK(tickdb.find(97) == nullptr);
+        BOOST_CHECK(tickdb.find(20) == nullptr);
+    }
+    
+    BOOST_AUTO_TEST_CASE(secdb_load_01) {
+        an::TickLadder tickdb;
+        tickdb.loadData("NXT_ticksize.txt");
+        an::SecurityDatabase secdb(an::ME, tickdb);
+        secdb.loadData("security_database.csv");
+        BOOST_CHECK(secdb.securities().size()            == 6);
+
+        BOOST_CHECK(secdb.securities().front().id        == 1000);
+        BOOST_CHECK(secdb.securities().front().symbol    == "APPL");
+        BOOST_CHECK(!secdb.securities().front().has_died);
+        BOOST_CHECK(secdb.securities().front().tradeable);
+        BOOST_CHECK(secdb.find("APPL")                   == 0);
+        BOOST_CHECK(secdb.tickTable(secdb.find("APPL"))  != nullptr); // Has TickTable
+
+        BOOST_CHECK(secdb.find("IBM")                    == 2);
+        BOOST_CHECK(secdb.securities()[2].id             == 99);
+        BOOST_CHECK(secdb.securities()[2].symbol         == "IBM");
+        BOOST_CHECK(secdb.tickTable(2)                   != nullptr); // Has TickTable
+
+        BOOST_CHECK(secdb.find("GE")                     == 5);
+        BOOST_CHECK(secdb.securities().back().id         == 66);
+        BOOST_CHECK(secdb.securities().back().symbol     == "GE");
+
+        BOOST_CHECK(secdb.securities()[1].id             == 666);
+        BOOST_CHECK(secdb.securities()[1].symbol         == "ENE");
+        BOOST_CHECK(secdb.securities()[1].has_died);
+        BOOST_CHECK(!secdb.securities()[1].tradeable);
+
+        BOOST_CHECK(secdb.securities()[4].id             == 100);
+        BOOST_CHECK(secdb.securities()[4].symbol         == "VOD.L");
+        BOOST_CHECK(!secdb.securities()[4].has_died);
+        BOOST_CHECK(secdb.securities()[4].tradeable);
+
+        BOOST_CHECK(secdb.find("MSFT")                   != an::SecurityDatabase::npos);
+
+        // Securities that have died or have a different exchange cannot be looked up
+        BOOST_CHECK(secdb.find("ENE")                    == an::SecurityDatabase::npos);
+        BOOST_CHECK(secdb.find("VOD.L")                  == an::SecurityDatabase::npos);
+        BOOST_CHECK(secdb.find("UNKNOWN")                == an::SecurityDatabase::npos);
+    }
+    BOOST_AUTO_TEST_CASE(secdb_load_bad_01) {
+        an::TickLadder tickdb;
+        an::SecurityDatabase secdb(an::ME, tickdb);
+        secdb.loadData("security_database.csv");
+        BOOST_CHECK(secdb.securities().size()            == 6);
+        BOOST_CHECK(secdb.find("APPL")                   == 0);
+        BOOST_CHECK(secdb.tickTable(secdb.find("APPL"))  == nullptr); // Didn't load tickdb
+        BOOST_CHECK(secdb.tickTable(1)                   == nullptr); // Didn't load tickdb
+        BOOST_CHECK(secdb.tickTable(5)                   == nullptr); // Didn't load tickdb
+    }
 BOOST_AUTO_TEST_SUITE_END()
