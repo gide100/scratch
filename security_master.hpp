@@ -12,6 +12,8 @@ class SecurityError : public runtime_error {
         SecurityError(const std::string& msg) : runtime_error(msg) {}
 };
 
+// ********************** TICK TABLE ***********************
+
 struct tick_table_row_t {
     tick_table_row_t(price_t l, price_t u, price_t i) : lower(l), upper(u), have_upper(true), tick_size(i) { check(); }
     tick_table_row_t(price_t threshold, price_t i) : lower(threshold), upper(0.0), have_upper(false), tick_size(i) { check(); }
