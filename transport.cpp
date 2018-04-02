@@ -52,7 +52,7 @@ void an::asio_generic_server<ConnectionHandler>::ClientBroadcast::deliver(const 
 void an::chat_handler::read_packet() {
     boost::asio::async_read_until( 
         socket_,    // From
-        in_packet_, // Destination
+        in_packet_, // Destination (stream buffer)
         '\n',       // Terminator
         // Completion handler, me is a shared pointer
         [me=shared_from_this()]( boost::system::error_code const& ec, std::size_t bytes_xfer) {
@@ -64,11 +64,12 @@ void an::chat_handler::read_packet() {
 
 void an::chat_handler::read_packet_done( boost::system::error_code const& error, std::size_t bytes_transferred ) {
     if (error) { 
+        // On error fall out (don't re-queue read).
         std::cout << "ERROR chat_handler::read_packet_done" << std::endl;
-        return; 
+        return; // bail 
     }
 
-    std::istream stream(&in_packet_);
+    std::istream stream(&in_packet_); // stream to string
     std::string packet_string;
     std::getline(stream >> std::ws, packet_string); // Read whole line including spaces
     //stream >> packet_string;
@@ -93,7 +94,7 @@ void an::chat_handler::read_packet_done( boost::system::error_code const& error,
     } else {
         send(packet_string); send("\n"); //TODO - remove echo
     }
-    read_packet();  
+    read_packet(); // Queue another read 
 }
 
 

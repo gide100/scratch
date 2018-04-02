@@ -17,7 +17,9 @@ namespace an {
 // *** SERVER ***
 template <typename ConnectionHandler>
 class asio_generic_server {
-    // Shared pointer to the type of the connection handler
+    // Shared pointer to the type of the connection handler, this is the connectionbetween the client 
+    // and the server. Who owns it? When it has nothing to send and no ability to read, or no internal
+    // work. It stays alive.
     using shared_handler_t = std::shared_ptr<ConnectionHandler>;
 
     public:
@@ -52,6 +54,7 @@ class asio_generic_server {
             broadcast_.deliver(msg, to);
         }
     private:
+        // New connection comes in this is called.
         void handle_new_connection(shared_handler_t handler, boost::system::error_code const& error);
 
         int thread_count_;
@@ -64,7 +67,7 @@ class asio_generic_server {
 template<typename ConnectionHandler>
 void an::asio_generic_server<ConnectionHandler>::start_server(std::uint16_t port) {
     // Shared pointer to the type handling the connection
-    auto handler = std::make_shared<ConnectionHandler>(io_context_, broadcast_);
+    auto handler = std::make_shared<ConnectionHandler>(io_context_, broadcast_); // IO service by reference
 
     // set up the acceptor to listen on the tcp port
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), port);
@@ -76,7 +79,7 @@ void an::asio_generic_server<ConnectionHandler>::start_server(std::uint16_t port
     acceptor_.async_accept(
         handler->socket(), [=](auto ec) {
             // Pass handler and error code
-            handle_new_connection(handler,ec);
+            handle_new_connection(handler,ec); // Completion handler
         }
     );
 
@@ -119,9 +122,10 @@ void an::asio_generic_server<ConnectionHandler>::handle_new_connection(
 
 
 
-// CRTP allows us to inject behaviour to get shared pointer to self at any time
-// this allow it to control its own lifetime.
+// CRTP allows us to inject behaviour to get shared pointer to itself at any time
+// this allows it to control its own lifetime.
 // Communicates with the client
+// Instantiate a new one of these each time a client connects.
 class chat_handler : public std::enable_shared_from_this<chat_handler> {
     public:
         chat_handler(boost::asio::io_context& context,
@@ -161,15 +165,16 @@ class chat_handler : public std::enable_shared_from_this<chat_handler> {
             send_packet_queue_.push_back(std::move(message));
 
             if(!write_in_progress) {
+                // Start sending
                 start_packet_send();
             }
         }
 
         boost::asio::io_context&        context_;
-        boost::asio::ip::tcp::socket    socket_;
+        boost::asio::ip::tcp::socket    socket_; // Socket the client communicates on
         boost::asio::io_context::strand write_strand_; // Prevents multiple writes to port
-        boost::asio::streambuf          in_packet_;
-        std::deque<std::string>         send_packet_queue_;
+        boost::asio::streambuf          in_packet_; // Data coming in
+        std::deque<std::string>         send_packet_queue_; // Data going out
         asio_generic_server<chat_handler>::ClientBroadcast&   broadcast_;
 };
 
