@@ -5,70 +5,95 @@
 #include "order.hpp"
 
 BOOST_AUTO_TEST_SUITE(all_orders)
-BOOST_AUTO_TEST_CASE(limit_order01) {
-    an::LimitOrder lo1(11,"Client2",an::ME,"IBM",an::SELL,10,5.12);
-    BOOST_CHECK_EQUAL(lo1.to_string(),"type=LIMIT:id=11:origin=Client2:destination=ME:symbol=IBM:direction=SELL:shares=10:price=5.12");
-    an::LimitOrder lo2(1234,"ClientA",an::ME,"APPL",an::BUY,99,15.12);
-    BOOST_CHECK_EQUAL(lo2.to_string(),"type=LIMIT:id=1234:origin=ClientA:destination=ME:symbol=APPL:direction=BUY:shares=99:price=15.12");
-}
-BOOST_AUTO_TEST_CASE(market_order01) {
-    an::MarketOrder lo1(11,"Client2",an::ME,"IBM",an::SELL,10);
-    BOOST_CHECK_EQUAL(lo1.to_string(),"type=MARKET:id=11:origin=Client2:destination=ME:symbol=IBM:direction=SELL:shares=10");
-    an::MarketOrder lo2(1234,"ClientA",an::ME,"APPL",an::BUY,99);
-    BOOST_CHECK_EQUAL(lo2.to_string(),"type=MARKET:id=1234:origin=ClientA:destination=ME:symbol=APPL:direction=BUY:shares=99");
-}
-BOOST_AUTO_TEST_CASE(cancel_order01) {
-    an::CancelOrder lo1(11,"Client2",an::ME,"APPL");
-    BOOST_CHECK_EQUAL(lo1.to_string(),"type=CANCEL:id=11:origin=Client2:destination=ME:symbol=APPL");
-    an::CancelOrder lo2(1234,"ClientA","MatchingEngine2","APPL");
-    BOOST_CHECK_EQUAL(lo2.to_string(),"type=CANCEL:id=1234:origin=ClientA:destination=MatchingEngine2:symbol=APPL");
-}
-BOOST_AUTO_TEST_CASE(amend_order01) {
-    an::AmendOrder lo1(11,"Client2",an::ME,"APPL",99.99);
-    BOOST_CHECK_EQUAL(lo1.to_string(),"type=AMEND:id=11:origin=Client2:destination=ME:symbol=APPL:price=99.99");
-    an::AmendOrder lo2(1234,"ClientA",an::ME,"APPL",an::shares_t(999));
-    BOOST_CHECK_EQUAL(lo2.to_string(),"type=AMEND:id=1234:origin=ClientA:destination=ME:symbol=APPL:shares=999");
-}
+    BOOST_AUTO_TEST_CASE(limit_order01) {
+        an::LimitOrder lo1(11,"Client2",an::ME,"IBM",an::SELL,10,5.12);
+        BOOST_CHECK_EQUAL(lo1.to_string(),"type=LIMIT:id=11:origin=Client2:destination=ME:symbol=IBM:direction=SELL:shares=10:price=5.12");
+        an::LimitOrder lo2(1234,"ClientA",an::ME,"APPL",an::BUY,99,15.12);
+        BOOST_CHECK_EQUAL(lo2.to_string(),"type=LIMIT:id=1234:origin=ClientA:destination=ME:symbol=APPL:direction=BUY:shares=99:price=15.12");
+    }
+    BOOST_AUTO_TEST_CASE(market_order01) {
+        an::MarketOrder lo1(11,"Client2",an::ME,"IBM",an::SELL,10);
+        BOOST_CHECK_EQUAL(lo1.to_string(),"type=MARKET:id=11:origin=Client2:destination=ME:symbol=IBM:direction=SELL:shares=10");
+        an::MarketOrder lo2(1234,"ClientA",an::ME,"APPL",an::BUY,99);
+        BOOST_CHECK_EQUAL(lo2.to_string(),"type=MARKET:id=1234:origin=ClientA:destination=ME:symbol=APPL:direction=BUY:shares=99");
+    }
+    BOOST_AUTO_TEST_CASE(cancel_order01) {
+        an::CancelOrder lo1(11,"Client2",an::ME,"APPL");
+        BOOST_CHECK_EQUAL(lo1.to_string(),"type=CANCEL:id=11:origin=Client2:destination=ME:symbol=APPL");
+        an::CancelOrder lo2(1234,"ClientA","MatchingEngine2","APPL");
+        BOOST_CHECK_EQUAL(lo2.to_string(),"type=CANCEL:id=1234:origin=ClientA:destination=MatchingEngine2:symbol=APPL");
+    }
+    BOOST_AUTO_TEST_CASE(amend_order01) {
+        an::AmendOrder lo1(11,"Client2",an::ME,"APPL",99.99);
+        BOOST_CHECK_EQUAL(lo1.to_string(),"type=AMEND:id=11:origin=Client2:destination=ME:symbol=APPL:price=99.99");
+        an::AmendOrder lo2(1234,"ClientA",an::ME,"APPL",an::shares_t(999));
+        BOOST_CHECK_EQUAL(lo2.to_string(),"type=AMEND:id=1234:origin=ClientA:destination=ME:symbol=APPL:shares=999");
+    }
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(make_orders)
-BOOST_AUTO_TEST_CASE(limit_order01) {
-    an::Message* o1 = an::Order::makeOrder("origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50:type=LIMIT:id=123");
-    BOOST_CHECK_EQUAL(o1->to_string(),"type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50:price=92.0");
-}
-BOOST_AUTO_TEST_CASE(market_order01) {
-    an::Message* o1 = an::Order::makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
-    BOOST_CHECK_EQUAL(o1->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
-}
-BOOST_AUTO_TEST_CASE(cancel_order01) {
-    an::Message* o1 = an::Order::makeOrder("type=CANCEL:id=123:origin=Client1:destination=ME:symbol=APPL");
-    BOOST_CHECK_EQUAL(o1->to_string(),"type=CANCEL:id=123:origin=Client1:destination=ME:symbol=APPL");
-}
-BOOST_AUTO_TEST_CASE(amend_order01) {
-    an::Message* o1 = an::Order::makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:price=99.99");
-    BOOST_CHECK_EQUAL(o1->to_string(),"type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:price=99.99");
-    an::Message* o2 = an::Order::makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:shares=99");
-    BOOST_CHECK_EQUAL(o2->to_string(),"type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:shares=99");
-}
-BOOST_AUTO_TEST_CASE(response_01) {
-    an::Message* o1 = an::Order::makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
-    BOOST_CHECK_EQUAL(o1->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
-    an::Response res1(o1,an::ACK,"OK");
-    BOOST_CHECK_EQUAL(res1.to_string(),"type=MARKET:id=123:origin=ME:destination=Client1:symbol=MSFT:direction=BUY:shares=50:response=ACK:text=OK");
-}
+    BOOST_AUTO_TEST_CASE(limit_order01) {
+        an::Message* o1 = an::Order::makeOrder("origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50:type=LIMIT:id=123");
+        BOOST_CHECK_EQUAL(o1->to_string(),"type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50:price=92.0");
+    }
+    BOOST_AUTO_TEST_CASE(market_order01) {
+        an::Message* o1 = an::Order::makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
+        BOOST_CHECK_EQUAL(o1->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
+    }
+    BOOST_AUTO_TEST_CASE(cancel_order01) {
+        an::Message* o1 = an::Order::makeOrder("type=CANCEL:id=123:origin=Client1:destination=ME:symbol=APPL");
+        BOOST_CHECK_EQUAL(o1->to_string(),"type=CANCEL:id=123:origin=Client1:destination=ME:symbol=APPL");
+    }
+    BOOST_AUTO_TEST_CASE(amend_order01) {
+        an::Message* o1 = an::Order::makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:price=99.99");
+        BOOST_CHECK_EQUAL(o1->to_string(),"type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:price=99.99");
+        an::Message* o2 = an::Order::makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:shares=99");
+        BOOST_CHECK_EQUAL(o2->to_string(),"type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:shares=99");
+    }
+BOOST_AUTO_TEST_SUITE_END()
 
-
-
+BOOST_AUTO_TEST_SUITE(replies)
+    BOOST_AUTO_TEST_CASE(response_01) {
+        an::Message* o1 = an::Order::makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
+        BOOST_CHECK_EQUAL(o1->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
+        an::Response res1(o1,an::ACK,"OK");
+        BOOST_CHECK_EQUAL(res1.to_string(),"type=MARKET:id=123:origin=ME:destination=Client1:symbol=MSFT:direction=BUY:shares=50:response=ACK:text=OK");
+    }
+    BOOST_AUTO_TEST_CASE(trade_report_01) {
+        auto mkt01 = static_cast<an::MarketOrder*>(an::Order::makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50"));
+        BOOST_CHECK_EQUAL(mkt01->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
+        an::TradeReport trr01(mkt01,an::BUY, 50, 100.0);
+        BOOST_CHECK_EQUAL(trr01.to_string(),"type=TRADE:origin=ME:destination=Client1:orig_order_id=123:symbol=MSFT:direction=BUY:shares=50:price=100.0");
+        an::TradeReport trr02(mkt01,an::SELL, 10, 101.0);
+        BOOST_CHECK_EQUAL(trr02.to_string(),"type=TRADE:origin=ME:destination=Client1:orig_order_id=123:symbol=MSFT:direction=SELL:shares=10:price=101.0");
+    }
+    BOOST_AUTO_TEST_CASE(market_data_01) {
+        an::market_data_t quote{ 
+            .origin=an::ME, .symbol="MSFT", 
+            .have_bid=true, .bid=100.0, .bid_size=100, 
+            .have_ask=true, .ask=101.0, .ask_size=10, 
+            .have_last_trade=true, .last_trade_price=100.10, .last_trade_shares=50,
+            .trade_time="2018-01-01 12:00:00.00000", .quote_time="2018-01-01 12:01:00.00000",
+            .volume=100.10*50 };
+        an::MarketData md1(an::ME, quote);
+        BOOST_CHECK_EQUAL(md1.to_string(), "type=MARKETDATA:origin=ME:destination=:symbol=MSFT:bid=100.0:bid_size=100:ask=101.0:ask_size=10:last_trade_price=100.1:last_trade_shares=50:trade_time=2018-01-01 12:00:00.00000:quote_time=2018-01-01 12:01:00.00000:volume=5005.0");
+        quote.have_bid = false; quote.have_ask = false;
+        an::MarketData md2(an::ME, quote);
+        BOOST_CHECK_EQUAL(md2.to_string(), "type=MARKETDATA:origin=ME:destination=:symbol=MSFT:bid=N/A:bid_size=N/A:ask=N/A:ask_size=N/A:last_trade_price=100.1:last_trade_shares=50:trade_time=2018-01-01 12:00:00.00000:quote_time=2018-01-01 12:01:00.00000:volume=5005.0");
+        quote.have_last_trade = false; quote.volume = 0.0; 
+        an::MarketData md3(an::ME, quote);
+        BOOST_CHECK_EQUAL(md3.to_string(), "type=MARKETDATA:origin=ME:destination=:symbol=MSFT:bid=N/A:bid_size=N/A:ask=N/A:ask_size=N/A:last_trade_price=N/A:last_trade_shares=N/A:trade_time=N/A:quote_time=2018-01-01 12:01:00.00000:volume=0.0");
+    }
 BOOST_AUTO_TEST_SUITE_END()
 
 
 BOOST_AUTO_TEST_SUITE(make_login)
-BOOST_AUTO_TEST_CASE(login_01) {
-    an::Message* o1 = an::Message::makeOrder("type=LOGIN:origin=Client1:destination=ME");
-    BOOST_CHECK_EQUAL(o1->to_string(),"type=LOGIN:origin=Client1:destination=ME");
-    o1->reverse_direction();
-    BOOST_CHECK_EQUAL(o1->to_string(),"type=LOGIN:origin=ME:destination=Client1");
-}
+    BOOST_AUTO_TEST_CASE(login_01) {
+        an::Message* o1 = an::Message::makeOrder("type=LOGIN:origin=Client1:destination=ME");
+        BOOST_CHECK_EQUAL(o1->to_string(),"type=LOGIN:origin=Client1:destination=ME");
+        o1->reverse_direction();
+        BOOST_CHECK_EQUAL(o1->to_string(),"type=LOGIN:origin=ME:destination=Client1");
+    }
 BOOST_AUTO_TEST_SUITE_END()
 
 struct CheckMessage {
@@ -76,7 +101,7 @@ struct CheckMessage {
     bool operator()(an::OrderError const& ex) const {
         bool ok = ex.what() == str_; 
         if (!ok) {
-            BOOST_TEST_MESSAGE("Got [" << ex.what() << "] != Expected {" << str_ <<"]");
+            BOOST_TEST_MESSAGE("Got [" << ex.what() << "] != Expected [" << str_ <<"]");
         }
         return ok;
     }
@@ -171,7 +196,7 @@ BOOST_AUTO_TEST_SUITE(make_orders_bad)
         an::OrderError, CheckMessage("Invalid flags got 000011110 expected 000111110") );
     }
     BOOST_AUTO_TEST_CASE(cancel_id_zero_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=CANCEL:id=0:origin=Client1:destination=ME:symbol=APPL"), // missing symbol
+        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=CANCEL:id=0:origin=Client1:destination=ME:symbol=APPL"), // id is zero
         an::OrderError, CheckMessage("Invalid id set to 0") );
     }
     BOOST_AUTO_TEST_CASE(cancel_extra_price_01) {
@@ -187,7 +212,8 @@ BOOST_AUTO_TEST_SUITE(make_orders_bad)
        BOOST_CHECK_EQUAL(o1->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
        BOOST_CHECK_EXCEPTION(an::Response res1(o1,an::ACK,"Error:message"), an::OrderError, CheckMessage("Cannot have [:|=|\\n] in Response text") );
        BOOST_CHECK_EXCEPTION(an::Response res2(o1,an::ACK,"Error=message"), an::OrderError, CheckMessage("Cannot have [:|=|\\n] in Response text") );
-       BOOST_CHECK_EXCEPTION(an::Response res3(nullptr,an::ACK,"OK"), an::OrderError, CheckMessage("nullptr in Response Message") );
+       BOOST_CHECK_EXCEPTION(an::Response res3(o1,an::ACK,"Error\nmessage"), an::OrderError, CheckMessage("Cannot have [:|=|\\n] in Response text") );
+       BOOST_CHECK_EXCEPTION(an::Response res4(nullptr,an::ACK,"OK"), an::OrderError, CheckMessage("nullptr in Response Message") );
     }  
 
 BOOST_AUTO_TEST_SUITE_END()
