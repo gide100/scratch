@@ -341,6 +341,8 @@ std::string an::AmendOrder::to_string() const {
 an::AmendOrder::~AmendOrder() { }
 
 
+an::Reply::~Reply() { }
+std::string an::Reply::to_string() const { return Message::to_string(); }
 
 std::string an::Response::to_string() const {
     std::ostringstream os;
@@ -363,7 +365,7 @@ an::Response::~Response() { }
 std::string an::TradeReport::to_string() const {
     std::ostringstream os;
     os << "type" << SEPERATOR << "TRADE" << DELIMITOR
-       << Message::to_string() << DELIMITOR
+       << Reply::to_string() << DELIMITOR
        << "orig_order_id" << SEPERATOR << orig_order_id_ << DELIMITOR
        << "symbol" << SEPERATOR << symbol_ << DELIMITOR
        << "direction" << SEPERATOR << an::to_string(direction_) << DELIMITOR
@@ -373,4 +375,38 @@ std::string an::TradeReport::to_string() const {
 }
 
 an::TradeReport::~TradeReport() { }
+
+std::string an::MarketData::to_string() const {
+    std::ostringstream os;
+    os << "type" << SEPERATOR << "MARKETDATA" << DELIMITOR
+       << Reply::to_string() << DELIMITOR
+       << "symbol" << SEPERATOR << md_.symbol << DELIMITOR ;
+        if (md_.have_bid) {
+            os << "bid" << SEPERATOR << floatDecimalPlaces(md_.bid,MAX_PRICE_PRECISION) << DELIMITOR
+               << "bid_size" << SEPERATOR << md_.bid_size << DELIMITOR ;
+        } else {
+            os << "bid=N/A:bid_size=N/A:";
+        }
+        if (md_.have_ask) {
+            os << "ask" << SEPERATOR << floatDecimalPlaces(md_.ask,MAX_PRICE_PRECISION) << DELIMITOR
+               << "ask_size" << SEPERATOR << md_.ask_size << DELIMITOR ;
+        } else {
+            os << "ask=N/A:ask_size=N/A:";
+        }
+        if (md_.have_last_trade) {
+            os << "last_trade_price" << SEPERATOR << floatDecimalPlaces(md_.last_trade_price,MAX_PRICE_PRECISION) << DELIMITOR
+               << "last_trade_shares" << SEPERATOR << md_.last_trade_shares << DELIMITOR
+               << "trade_time" << SEPERATOR << md_.trade_time << DELIMITOR ;
+        } else {
+            os << "last_trade_price=N/A:last_trade_shares=N/A:trade_time=N/A:" ;
+        }
+
+       os << "quote_time" << SEPERATOR << md_.quote_time << DELIMITOR
+          << "volume" << SEPERATOR << floatDecimalPlaces(md_.volume,VOLUME_OUTPUT_PRECISION) ;
+    return os.str();
+}
+
+an::MarketData::~MarketData() { }
+
+
 

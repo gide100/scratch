@@ -171,11 +171,21 @@ class AmendOrder : public Order {
 
 };
 
+
+class Reply : public Message {
+    public:
+        Reply(location_t origin, location_t dest = ME)
+            : Message(origin, dest) { } 
+
+        virtual std::string to_string() const = 0;
+        virtual ~Reply() = 0;
+};
+
 // Decorator to responde to messages
-class Response : public Message {
+class Response : public Reply {
     public:
         explicit Response(Message* m, response_t response=ERROR, text_t text = "")
-             : Message("",""), message_(m), response_(response), text_(text) {
+             : Reply("",""), message_(m), response_(response), text_(text) {
             if (m == nullptr) {
                 throw OrderError("nullptr in Response Message");
             }
@@ -186,7 +196,7 @@ class Response : public Message {
             m->reverse_direction();
         }
         explicit Response(location_t origin, response_t response=ERROR, text_t text = "")
-             : Message(origin,ME), message_(nullptr), response_(response), text_(text) {
+             : Reply(origin,ME), message_(nullptr), response_(response), text_(text) {
             if ((text_.find(':')!=text_t::npos) || (text_.find('=')!=text_t::npos) ||
                 (text_.find('\n')!=text_t::npos)) {
                 throw OrderError("Cannot have [:|=|\\n] in Response text");
@@ -203,10 +213,10 @@ class Response : public Message {
         text_t text_;
 };
 
-class TradeReport : public Message {
+class TradeReport : public Reply {
     public:
         explicit TradeReport(Order* o, direction_t d, shares_t s, price_t p)
-            : Message(o->destination(), o->origin()), orig_order_id_(o->orderId()), symbol_(o->symbol()),
+            : Reply(o->destination(), o->origin()), orig_order_id_(o->orderId()), symbol_(o->symbol()),
               direction_(d), shares_(s), price_(p) {
         }
 
@@ -220,6 +230,17 @@ class TradeReport : public Message {
         price_t price_;
 };
 
+class MarketData : public Reply {
+    public:
+        explicit MarketData(location_t origin, const market_data_t& md )
+            : Reply(origin, ""), md_(md) {
+        }
+
+        virtual std::string to_string() const;
+        virtual ~MarketData();
+    protected:
+        market_data_t md_;
+};
 
 
 } // an namespace

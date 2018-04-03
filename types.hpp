@@ -29,6 +29,7 @@ typedef std::int64_t shares_t;
 typedef std::uint64_t sequence_t;
 typedef double price_t;
 const int MAX_PRICE_PRECISION = 7;
+const int VOLUME_OUTPUT_PRECISION = 2;
 constexpr double PRICE_EPSILON = 1.0/std::pow(10,an::MAX_PRICE_PRECISION);
 typedef std::chrono::steady_clock::time_point since_t;
 
@@ -38,6 +39,8 @@ enum response_t { ACK, COMPLETE, REJECT, CANCELLED, UNKNOWN, ERROR };
 typedef std::string text_t;
 typedef double volume_t;
 typedef std::int64_t counter_t;
+
+typedef std::string timestamp_t;
 
 typedef std::string symbol_t;
 const location_t ME = "ME"; // Matching Engine
@@ -53,6 +56,25 @@ const std::string MY_LOCALE = "en_GB.UTF-8";
 // Constants
 const price_t MAX_SHARE_PRICE = 1000000.0;
 const shares_t MAX_OUTSTANDING_SHARES = 10000000000;
+
+// Market Data
+struct market_data_t {                                                                                        
+    location_t      origin;                                                                                   
+    symbol_t        symbol;                                                                                   
+    bool            have_bid;
+    price_t         bid;                                                                                      
+    shares_t        bid_size;                                                                                 
+    bool            have_ask;
+    price_t         ask;                                                                                      
+    shares_t        ask_size;                                                                                 
+    bool            have_last_trade;                                                                          
+    price_t         last_trade_price;                                                                         
+    shares_t        last_trade_shares;                                                                        
+    timestamp_t     trade_time;                                                                               
+    timestamp_t     quote_time;                                                                               
+    volume_t        volume;                                                                                   
+};                                                                                                            
+     
 
 inline const char* to_string(direction_t d) {
      switch (d) {
