@@ -59,6 +59,12 @@ BOOST_AUTO_TEST_SUITE(replies)
         an::Response res1(o1,an::ACK,"OK");
         BOOST_CHECK_EQUAL(res1.to_string(),"type=MARKET:id=123:origin=ME:destination=Client1:symbol=MSFT:direction=BUY:shares=50:response=ACK:text=OK");
     }
+    BOOST_AUTO_TEST_CASE(response_02) {
+        an::Response res1(an::ME,"Client1",an::ACK,"OK");
+        BOOST_CHECK_EQUAL(res1.to_string(),"type=REPLY:origin=ME:destination=Client1:response=ACK:text=OK");
+        an::Response res2("FTSE","Client2",an::ERROR,"Bad stuff");
+        BOOST_CHECK_EQUAL(res2.to_string(),"type=REPLY:origin=FTSE:destination=Client2:response=ERROR:text=Bad stuff");
+    }
     BOOST_AUTO_TEST_CASE(trade_report_01) {
         auto mkt01 = static_cast<an::MarketOrder*>(an::Order::makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50"));
         BOOST_CHECK_EQUAL(mkt01->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");

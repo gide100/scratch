@@ -351,7 +351,8 @@ std::string an::Response::to_string() const {
            << "response" << SEPERATOR << an::to_string(response_) << DELIMITOR
            << "text" << SEPERATOR << text_;
     } else {
-        os << Message::to_string() << DELIMITOR
+        os << "type" << SEPERATOR << "REPLY" << DELIMITOR
+           << Message::to_string() << DELIMITOR
            << "response" << SEPERATOR << an::to_string(response_) << DELIMITOR
            << "text" << SEPERATOR << text_;
     }

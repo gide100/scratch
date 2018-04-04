@@ -24,7 +24,7 @@ int main() {
     auto log01a = std::make_unique<an::Login      >(    "Client2", an::ME);
     auto res01a = std::make_unique<an::Response   >( mkt01a.get(), an::ACK, "OK");
     auto res02a = std::make_unique<an::Response   >( lim01a.get(), an::ERROR, "Error occurred");
-    auto res03a = std::make_unique<an::Response   >(    "Client1", an::ERROR, "Error occurred");
+    auto res03a = std::make_unique<an::Response   >(an::ME,"Client1", an::ERROR, "Error occurred");
     auto trr01a = std::make_unique<an::TradeReport>( lim01a.get(), an::BUY, 5, 12.35);
     std::cout << " *** ORDERS ***" << std::endl;
     std::cout << *mkt01a << std::endl;

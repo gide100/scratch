@@ -195,13 +195,12 @@ class Response : public Reply {
             }
             m->reverse_direction();
         }
-        explicit Response(location_t origin, response_t response=ERROR, text_t text = "")
-             : Reply(origin,ME), message_(nullptr), response_(response), text_(text) {
+        explicit Response(location_t origin, location_t destination, response_t response=ERROR, text_t text = "")
+             : Reply(origin,destination), message_(nullptr), response_(response), text_(text) {
             if ((text_.find(':')!=text_t::npos) || (text_.find('=')!=text_t::npos) ||
                 (text_.find('\n')!=text_t::npos)) {
                 throw OrderError("Cannot have [:|=|\\n] in Response text");
             }
-            reverse_direction();
         }
 
 
