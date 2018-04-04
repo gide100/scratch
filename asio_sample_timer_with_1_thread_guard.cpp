@@ -18,7 +18,7 @@ int main() {
     boost::asio::io_context context;
 
     // If the next line is commented out the program exits before the timer completes
-    auto work = boost::asio::make_work_guard(context);
+    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work = boost::asio::make_work_guard(context);
  
     std::cout << std::chrono::system_clock::now() << " UTC\n";
 
