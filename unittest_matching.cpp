@@ -6,6 +6,7 @@
 #include "order.hpp"
 #include "security_master.hpp"
 #include "matching_engine.hpp"
+#include "courier.hpp"
 
 
 BOOST_AUTO_TEST_SUITE(bookkeeping)
@@ -109,7 +110,7 @@ BOOST_AUTO_TEST_SUITE(bookkeeping)
         BOOST_CHECK(buySide.top().id      ==    2);
 
 
-        an::SideRecord sr3 { 
+        an::SideRecord sr3 {
             .id = 3, .seq=3, .time = std::chrono::steady_clock::now(), .order_type=an::LIMIT,
             .direction=an::BUY, .price=101.0, .shares=5, .visible=true, .on_book=false };
         buySide.add(sr3);
@@ -178,7 +179,7 @@ BOOST_AUTO_TEST_SUITE(bookkeeping)
         BOOST_CHECK(sellSide.top().id      ==    2);
 
 
-        an::SideRecord sr3 { 
+        an::SideRecord sr3 {
             .id = 3, .seq=3, .time = std::chrono::steady_clock::now(), .order_type=an::LIMIT,
             .direction=an::SELL, .price=99.0, .shares=5, .visible=true, .on_book=false };
         sellSide.add(sr3);
@@ -239,7 +240,7 @@ BOOST_AUTO_TEST_SUITE(bookkeeping)
         BOOST_CHECK(bk.stats().buy.value  ==    100.0*20);
         BOOST_CHECK(bk.stats().buy.volume ==    100.0*20);
         BOOST_CHECK(buySide.top().id      ==    1);
-        
+
         pr1 = buySide.findRecord(1);
         shr = pr1->shares; pr1->shares = 5;
         buySide.amendShares(*pr1, shr);
@@ -253,7 +254,7 @@ BOOST_AUTO_TEST_SUITE(bookkeeping)
         an::Bookkeeper bk(1520812800, 100.0, epoch);
         an::Side buySide(bk, an::BUY, epoch);
         an::shares_t shr = 0;
-        an::SideRecord* ptr1 = nullptr; 
+        an::SideRecord* ptr1 = nullptr;
 
         an::SideRecord sr1 {
             .id = 1, .seq=1, .time = std::chrono::steady_clock::now(), .order_type=an::LIMIT,
@@ -274,7 +275,7 @@ BOOST_AUTO_TEST_SUITE(bookkeeping)
         BOOST_CHECK(bk.stats().buy.value  ==    101.0*15);
         BOOST_CHECK(bk.stats().buy.volume ==    100.0*10+101.0*15);
         BOOST_CHECK(buySide.top().id      ==    1);
-        
+
         ptr1 = buySide.findRecord(1);
         shr = ptr1->shares; ptr1->shares = 5;
         buySide.amendShares(*ptr1, shr);
@@ -308,7 +309,7 @@ BOOST_AUTO_TEST_SUITE(bookkeeping)
         BOOST_CHECK(bk.stats().sell.value  ==    100.0*20);
         BOOST_CHECK(bk.stats().sell.volume ==    100.0*20);
         BOOST_CHECK(sellSide.top().id      ==    1);
-        
+
         pr1 = sellSide.findRecord(1);
         shr = pr1->shares; pr1->shares = 5;
         sellSide.amendShares(*pr1, shr);
@@ -330,7 +331,7 @@ BOOST_AUTO_TEST_SUITE(book)
         tt.add(an::tick_table_row_t(100,  0.05));
         const an::price_t prev_close = 171.05;
 
-        an::Book book("APPL", epoch, tt, true, prev_close);
+        an::Book book(nullptr, "APPL", epoch, tt, true, prev_close);
         const an::Bookkeeper& bk = book.bookkeeper();
         BOOST_CHECK(bk.stats().shares_traded == 0);
         BOOST_CHECK(bk.stats().volume == 0);
@@ -354,7 +355,7 @@ BOOST_AUTO_TEST_SUITE(book)
         tt.add(an::tick_table_row_t(100,  0.05));
         const an::price_t prev_close = 171.07;
 
-        an::Book book("APPL", epoch, tt, true, prev_close);
+        an::Book book(nullptr, "APPL", epoch, tt, true, prev_close);
         const an::Bookkeeper& bk = book.bookkeeper();
 
         // Open book
@@ -380,7 +381,7 @@ BOOST_AUTO_TEST_SUITE(book)
         BOOST_CHECK(bk.stats().sell.shares  == 10);
         BOOST_CHECK(bk.stats().sell.value   == 172.0*10);
         BOOST_CHECK(bk.stats().sell.volume  == 172.0*10);
-        BOOST_CHECK(bk.stats().buy.trades   == 1); 
+        BOOST_CHECK(bk.stats().buy.trades   == 1);
         BOOST_CHECK(bk.stats().buy.shares   == 10);
         BOOST_CHECK(bk.stats().buy.value    == 170.0*10);
         BOOST_CHECK(bk.stats().buy.volume   == 170.0*10);
@@ -401,7 +402,7 @@ BOOST_AUTO_TEST_SUITE(book)
         tt.add(an::tick_table_row_t(100,  0.05));
         const an::price_t prev_close = 171.07;
 
-        an::Book book("APPL", epoch, tt, true, prev_close);
+        an::Book book(nullptr, "APPL", epoch, tt, true, prev_close);
         const an::Bookkeeper& bk = book.bookkeeper();
 
         // Open book
@@ -446,7 +447,7 @@ BOOST_AUTO_TEST_SUITE(book)
         tt.add(an::tick_table_row_t(100,  0.05));
         const an::price_t prev_close = 171.07;
 
-        an::Book book("APPL", epoch, tt, true, prev_close);
+        an::Book book(nullptr, "APPL", epoch, tt, true, prev_close);
         const an::Bookkeeper& bk = book.bookkeeper();
 
         // Open book
@@ -513,7 +514,7 @@ BOOST_AUTO_TEST_SUITE(book)
         tt.add(an::tick_table_row_t(100,  0.05));
         const an::price_t prev_close = 171.05;
 
-        an::Book book("APPL", epoch, tt, true, prev_close);
+        an::Book book(nullptr, "APPL", epoch, tt, true, prev_close);
         const an::Bookkeeper& bk = book.bookkeeper();
 
         // Open book
@@ -591,9 +592,9 @@ BOOST_AUTO_TEST_SUITE(book)
         tt.add(an::tick_table_row_t(100,  0.05));
         const an::price_t prev_close = 171.07;
 
-        an::Book book("APPL", epoch, tt, true, prev_close);
+        an::Book book(nullptr, "APPL", epoch, tt, true, prev_close);
         const an::Bookkeeper& bk = book.bookkeeper();
- 
+
         // Open book
         book.open();
 
@@ -614,14 +615,14 @@ BOOST_AUTO_TEST_SUITE(book)
         rec.seq = ++seq;
         rec.visible = true;
         book.executeOrder(rec, std::move(mkt01a));
-        BOOST_CHECK(bk.stats().shares_traded== 20); 
-        BOOST_CHECK(bk.stats().volume       == 172.0*10*2); 
-        BOOST_CHECK(bk.stats().trades       == 2); 
-        BOOST_CHECK(bk.stats().cancels      == 0); 
+        BOOST_CHECK(bk.stats().shares_traded== 20);
+        BOOST_CHECK(bk.stats().volume       == 172.0*10*2);
+        BOOST_CHECK(bk.stats().trades       == 2);
+        BOOST_CHECK(bk.stats().cancels      == 0);
         BOOST_CHECK(bk.stats().rejects      == 0);
         BOOST_CHECK(bk.stats().sell.trades  == 0);
         BOOST_CHECK(bk.stats().sell.volume  == 172.0*10); // Sell was on book
-        BOOST_CHECK(bk.stats().buy.trades   == 0); 
+        BOOST_CHECK(bk.stats().buy.trades   == 0);
         BOOST_CHECK(bk.stats().buy.volume   == 0); // Marketable doesn't reach book
 
         BOOST_CHECK(bk.stats().cancels      == 0);
@@ -638,9 +639,9 @@ BOOST_AUTO_TEST_SUITE(book)
         tt.add(an::tick_table_row_t(100,  0.05));
         const an::price_t prev_close = 171.07;
 
-        an::Book book("APPL", epoch, tt, true, prev_close);
+        an::Book book(nullptr, "APPL", epoch, tt, true, prev_close);
         const an::Bookkeeper& bk = book.bookkeeper();
- 
+
         // Open book
         book.open();
 
@@ -651,7 +652,7 @@ BOOST_AUTO_TEST_SUITE(book)
         BOOST_CHECK(bk.stats().buy.trades   == 1);
         BOOST_CHECK(bk.stats().cancels      == 0);
         BOOST_CHECK(bk.stats().rejects      == 0);
-        BOOST_CHECK(bk.stats().buy.value    == 172.0*10); 
+        BOOST_CHECK(bk.stats().buy.value    == 172.0*10);
         BOOST_CHECK(bk.stats().buy.volume   == 172.0*10);
 
         auto mkt01a = std::make_unique<an::MarketOrder >(  3,"Client2", an::ME,"APPL",an::SELL, 5);
@@ -660,16 +661,16 @@ BOOST_AUTO_TEST_SUITE(book)
         rec.seq = ++seq;
         rec.visible = true;
         book.executeOrder(rec, std::move(mkt01a));
-        BOOST_CHECK(bk.stats().shares_traded== 10); 
-        BOOST_CHECK(bk.stats().volume       == 172.0*5*2); 
-        BOOST_CHECK(bk.stats().trades       == 2); 
-        BOOST_CHECK(bk.stats().cancels      == 0); 
+        BOOST_CHECK(bk.stats().shares_traded== 10);
+        BOOST_CHECK(bk.stats().volume       == 172.0*5*2);
+        BOOST_CHECK(bk.stats().trades       == 2);
+        BOOST_CHECK(bk.stats().cancels      == 0);
         BOOST_CHECK(bk.stats().rejects      == 0);
-        BOOST_CHECK(bk.stats().sell.trades  == 0); // Trade didn't make it to book (marketable) 
+        BOOST_CHECK(bk.stats().sell.trades  == 0); // Trade didn't make it to book (marketable)
         BOOST_CHECK(bk.stats().sell.volume  == 0); // Ditto
         BOOST_CHECK(bk.stats().buy.trades   == 1); // Part filled
         BOOST_CHECK(bk.stats().buy.shares   == 5); // Part filled
-        BOOST_CHECK(bk.stats().buy.value    == 172.0*5); 
+        BOOST_CHECK(bk.stats().buy.value    == 172.0*5);
         BOOST_CHECK(bk.stats().buy.volume   == 172.0*5+172.0*5); // Filled + Active
 
         BOOST_CHECK(bk.stats().cancels      == 0);
@@ -686,7 +687,7 @@ BOOST_AUTO_TEST_SUITE(book)
         tt.add(an::tick_table_row_t(100,  0.05));
         const an::price_t prev_close = 171.05;
 
-        an::Book book("APPL", epoch, tt, true, prev_close);
+        an::Book book(nullptr, "APPL", epoch, tt, true, prev_close);
         const an::Bookkeeper& bk = book.bookkeeper();
 
         // Open book
@@ -735,7 +736,7 @@ BOOST_AUTO_TEST_SUITE(book)
         tt.add(an::tick_table_row_t(100,  0.05));
         const an::price_t prev_close = 171.05;
 
-        an::Book book("APPL", epoch, tt, true, prev_close);
+        an::Book book(nullptr, "APPL", epoch, tt, true, prev_close);
         const an::Bookkeeper& bk = book.bookkeeper();
 
         // Open book
@@ -797,7 +798,7 @@ BOOST_AUTO_TEST_SUITE(book)
         tt.add(an::tick_table_row_t(100,  0.05));
         const an::price_t prev_close = 171.07;
 
-        an::Book book("APPL", epoch, tt, true, prev_close);
+        an::Book book(nullptr, "APPL", epoch, tt, true, prev_close);
         const an::Bookkeeper& bk = book.bookkeeper();
 
         // Open book, orders should be ok now
@@ -867,7 +868,7 @@ BOOST_AUTO_TEST_SUITE(book)
         book.close();
         BOOST_CHECK(bk.stats().cancels       == 3);
     }
- 
+
     BOOST_AUTO_TEST_CASE(book_limit_reject_01) {
         an::sequence_t seq = 0;
         an::order_id_t id = 0;
@@ -879,7 +880,7 @@ BOOST_AUTO_TEST_SUITE(book)
         tt.add(an::tick_table_row_t(100,  0.05));
         const an::price_t prev_close = 171.05;
 
-        an::Book book("APPL", epoch, tt, true, prev_close);
+        an::Book book(nullptr, "APPL", epoch, tt, true, prev_close);
 
         const an::Bookkeeper& bk = book.bookkeeper();
         BOOST_CHECK(bk.stats().rejects == 0);
@@ -892,7 +893,7 @@ BOOST_AUTO_TEST_SUITE(book)
         BOOST_CHECK(bk.stats().sell.trades  == 0);
         BOOST_CHECK(bk.stats().rejects      == 1); // Book not open
         BOOST_CHECK(bk.stats().volume       == 0);
- 
+
         // Open book, orders should be ok now
         book.open();
 
@@ -900,7 +901,7 @@ BOOST_AUTO_TEST_SUITE(book)
         lim02a->pack(rec);
         rec.time = std::chrono::steady_clock::now(); rec.seq = ++seq; rec.visible = true;
         book.executeOrder(rec, std::move(lim02a));
-        BOOST_CHECK(bk.stats().rejects      == 1); 
+        BOOST_CHECK(bk.stats().rejects      == 1);
         BOOST_CHECK(bk.stats().sell.trades  == 1); // Ok
         BOOST_CHECK(bk.stats().sell.volume  == 172.0*10);
 
@@ -912,7 +913,7 @@ BOOST_AUTO_TEST_SUITE(book)
         BOOST_CHECK(bk.stats().cancels      == 0);
         book.executeOrder(rec, std::move(mkt01a));
         BOOST_CHECK(bk.stats().sell.trades  == 1);
-        BOOST_CHECK(bk.stats().rejects      == 1); 
+        BOOST_CHECK(bk.stats().rejects      == 1);
         BOOST_CHECK(bk.stats().cancels      == 1); // No ASK
 
 
@@ -920,14 +921,14 @@ BOOST_AUTO_TEST_SUITE(book)
         id = amd01a->orderId();
         book.amendActiveOrder(id, std::move(amd01a));
         std::cout << book.to_string(true) << std::endl;
-        BOOST_CHECK(bk.stats().sell.trades  == 1); 
+        BOOST_CHECK(bk.stats().sell.trades  == 1);
         BOOST_CHECK(bk.stats().rejects      == 2); // Order id does not exist
         BOOST_CHECK(bk.stats().cancels      == 1);
 
         auto can01a = std::make_unique<an::CancelOrder>(  6,"Client1", an::ME,"APPL");
         id = can01a->orderId();
         book.cancelActiveOrder(id, std::move(can01a));
-        BOOST_CHECK(bk.stats().sell.trades  == 1); 
+        BOOST_CHECK(bk.stats().sell.trades  == 1);
         BOOST_CHECK(bk.stats().rejects      == 3); // Order id does not exist
         BOOST_CHECK(bk.stats().cancels      == 1);
 
@@ -935,13 +936,13 @@ BOOST_AUTO_TEST_SUITE(book)
         lim02b->pack(rec);
         rec.time = std::chrono::steady_clock::now(); rec.seq = ++seq; rec.visible = true;
         book.executeOrder(rec, std::move(lim02b));
-        BOOST_CHECK(bk.stats().rejects      == 4); 
+        BOOST_CHECK(bk.stats().rejects      == 4);
 
         auto lim02c = std::make_unique<an::LimitOrder >(  7,"Client1", an::ME,"APPL",an::SELL,10,172.01);
         lim02c->pack(rec);
         rec.time = std::chrono::steady_clock::now(); rec.seq = ++seq; rec.visible = true;
         book.executeOrder(rec, std::move(lim02c));
-        BOOST_CHECK(bk.stats().rejects      == 5); 
+        BOOST_CHECK(bk.stats().rejects      == 5);
 
         book.close();
     }
@@ -950,7 +951,7 @@ BOOST_AUTO_TEST_SUITE_END()
 struct CheckMessage {
     explicit CheckMessage(std::string const& str) : str_(str) { }
     bool operator()(const std::exception& ex) const {
-        bool ok = ex.what() == str_; 
+        bool ok = ex.what() == str_;
         if (!ok) {
             BOOST_TEST_MESSAGE("Got [" << ex.what() << "] != Expected {" << str_ <<"]");
         }
@@ -959,13 +960,91 @@ struct CheckMessage {
     std::string str_;
 };
 
+BOOST_AUTO_TEST_SUITE(courier)
+    BOOST_AUTO_TEST_CASE(replies_01) {
+        an::TickLadder tickdb;
+        an::SecurityDatabase secdb(an::ME, tickdb);
+        an::Courier courier;
+        const an::courier_stats_t& cs = courier.stats();
+        BOOST_CHECK(cs.response_msgs         == 0);
+        BOOST_CHECK(cs.trade_report_msgs     == 0);
+        BOOST_CHECK(cs.market_data_msgs      == 0);
+        BOOST_CHECK(cs.receive_msgs          == 0);
+        BOOST_CHECK(cs.dropped_msgs          == 0);
+        BOOST_CHECK(cs.inscribed_destinations== 0);
+
+        an::MatchingEngine me(an::ME, secdb, courier, true);
+        BOOST_CHECK(cs.inscribed_destinations== 1); // MatchingEngine inscribes
+
+        an::Response rep01a(an::ME, "Client1", an::ACK, "OK");
+        courier.send(rep01a);
+        BOOST_CHECK(cs.response_msgs         == 1);
+        courier.send(rep01a);
+        BOOST_CHECK(cs.response_msgs         == 2);
+
+        auto mkt01a = std::make_unique<an::MarketOrder >(  3,"Client2", an::ME,"APPL",an::SELL, 5);
+        an::TradeReport trr01a(mkt01a.get(), an::BUY, 5, 100.0);
+        BOOST_CHECK(cs.trade_report_msgs     == 0);
+        courier.send(trr01a);
+        BOOST_CHECK(cs.trade_report_msgs     == 1);
+
+        an::market_data_t quote{
+            .origin=an::ME, .symbol="APPL",
+            .have_bid=true, .bid=100.0, .bid_size=100,
+            .have_ask=true, .ask=101.0, .ask_size=10,
+            .have_last_trade=true, .last_trade_price=100.10, .last_trade_shares=50,
+            .trade_time="2018-01-01 12:00:00.00000", .quote_time="2018-01-01 12:01:00.00000",
+            .volume=100.10*50 };
+        an::MarketData mtd01a(an::ME, quote);
+        BOOST_CHECK(cs.market_data_msgs      == 0);
+        courier.send(mtd01a);
+        BOOST_CHECK(cs.market_data_msgs      == 1);
+    }
+    BOOST_AUTO_TEST_CASE(trades_01) {
+        an::TickLadder tickdb;
+        an::SecurityDatabase secdb(an::ME, tickdb);
+        an::Courier courier;
+        const an::courier_stats_t& cs = courier.stats();
+        BOOST_CHECK(cs.response_msgs         == 0);
+        BOOST_CHECK(cs.trade_report_msgs     == 0);
+        BOOST_CHECK(cs.market_data_msgs      == 0);
+        BOOST_CHECK(cs.receive_msgs          == 0);
+        BOOST_CHECK(cs.dropped_msgs          == 0);
+        BOOST_CHECK(cs.inscribed_destinations== 0);
+
+        an::MatchingEngine me(an::ME, secdb, courier, true);
+        BOOST_CHECK(cs.inscribed_destinations== 1); // MatchingEngine inscribes
+
+        auto lim01a = std::make_unique<an::LimitOrder >(  1,"Client1", an::ME,"APPL",an::SELL, 5,172.0);
+        BOOST_CHECK(cs.receive_msgs          == 0);
+        courier.receive(std::move(lim01a)); // Rejected, no symbols
+        BOOST_CHECK(cs.receive_msgs          == 1);
+        auto mkt01a = std::make_unique<an::MarketOrder>(  2,"Client1", an::ME,"APPL",an::SELL, 5);
+        courier.receive(std::move(mkt01a)); // Rejected, no symbols
+        BOOST_CHECK(cs.receive_msgs          == 2);
+        auto amd01a = std::make_unique<an::AmendOrder >(  5,"Client1", an::ME,"APPL", 171.0);
+        courier.receive(std::move(amd01a)); // Rejected, no symbols
+        BOOST_CHECK(cs.receive_msgs          == 3);
+        auto can01a = std::make_unique<an::CancelOrder>(  6,"Client1", an::ME,"APPL");
+        courier.receive(std::move(can01a)); // Rejected, no symbols
+        BOOST_CHECK(cs.receive_msgs          == 4);
+        BOOST_CHECK(cs.dropped_msgs          == 0);
+
+        me.close();
+        an::engine_stats_t stats = me.stats();
+        BOOST_CHECK(stats.rejects            == 4); // All above rejected
+
+    }
+BOOST_AUTO_TEST_SUITE_END()
+
 BOOST_AUTO_TEST_SUITE(matching_engine)
     BOOST_AUTO_TEST_CASE(trades_01) {
         an::TickLadder tickdb;
         tickdb.loadData("NXT_ticksize.txt");
         an::SecurityDatabase secdb(an::ME, tickdb);
         secdb.loadData("security_database.csv");
-        an::MatchingEngine me(an::ME, secdb, true);
+        an::Courier courier;
+        an::MatchingEngine me(an::ME, secdb, courier, true);
 
         auto lim01a = std::make_unique<an::LimitOrder >(  1,"Client1", an::ME,"APPL",an::SELL,5,172.0);
         me.applyOrder(std::move(lim01a));
@@ -1017,7 +1096,8 @@ BOOST_AUTO_TEST_SUITE(matching_engine)
         tickdb.loadData("NXT_ticksize.txt");
         an::SecurityDatabase secdb(an::ME, tickdb);
         secdb.loadData("security_database.csv");
-        an::MatchingEngine me(an::ME, secdb, true);
+        an::Courier courier;
+        an::MatchingEngine me(an::ME, secdb, courier, true);
 
         auto lim01a = std::make_unique<an::LimitOrder >(  1,"Client1", an::ME,"APPL",an::SELL,5,172.00);
         me.applyOrder(std::move(lim01a));
@@ -1086,7 +1166,8 @@ BOOST_AUTO_TEST_SUITE(matching_engine)
         tickdb.loadData("NXT_ticksize.txt");
         an::SecurityDatabase secdb(an::ME, tickdb);
         secdb.loadData("security_database.csv");
-        an::MatchingEngine me(an::ME, secdb, true);
+        an::Courier courier;
+        an::MatchingEngine me(an::ME, secdb, courier, true);
 
         auto lim01a = std::make_unique<an::LimitOrder >(  1,"Client1", an::ME,"UNKNOWN",an::SELL,5,1.00);
         me.applyOrder(std::move(lim01a));
@@ -1124,7 +1205,7 @@ BOOST_AUTO_TEST_SUITE(matching_engine)
         me.applyOrder(std::move(can02a));
         auto amd02a = std::make_unique<an::AmendOrder >(  1,"Client1", "FTSE","APPL", an::shares_t(20));
         me.applyOrder(std::move(amd02a));
-        
+
         // Book rejects
         auto can03a = std::make_unique<an::CancelOrder>( 1,"Client1", an::ME,"APPL");
         me.applyOrder(std::move(can03a));
@@ -1139,7 +1220,7 @@ BOOST_AUTO_TEST_SUITE(matching_engine)
         me.applyOrder(std::move(lim04a));
         auto lim05a = std::make_unique<an::LimitOrder >( 11,"Client1", an::ME,"ENE",an::SELL,5,1.00);
         me.applyOrder(std::move(lim05a));
-        
+
         // Book cancels (no ASK)
         auto mkt06a = std::make_unique<an::MarketOrder>( 12,"Client1", an::ME,"APPL",an::BUY,5);
         me.applyOrder(std::move(mkt06a));
@@ -1172,7 +1253,8 @@ BOOST_AUTO_TEST_SUITE(matching_engine)
         tickdb.loadData("NXT_ticksize.txt");
         an::SecurityDatabase secdb(an::ME, tickdb);
         secdb.loadData("security_database.csv");
-        an::MatchingEngine me(an::ME, secdb, true);
+        an::Courier courier;
+        an::MatchingEngine me(an::ME, secdb, courier, true);
 
         auto lim01a = std::make_unique<an::LimitOrder >(  1,"Client1", an::ME,"APPL",an::SELL,5,172.0);
         me.applyOrder(std::move(lim01a));
