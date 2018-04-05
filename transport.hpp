@@ -23,7 +23,7 @@ class asio_generic_server {
     using shared_handler_t = std::shared_ptr<ConnectionHandler>;
 
     public:
-        // *** BROADCAST to all CLients ***
+        // *** BROADCAST to all Clients ***
         typedef std::string msg_t;
         typedef std::deque<msg_t> chat_message_queue;
         class ClientBroadcast {
