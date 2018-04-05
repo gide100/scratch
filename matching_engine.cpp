@@ -1,13 +1,14 @@
 #include "types.hpp"
 #include "matching_engine.hpp"
 #include "security_master.hpp"
+#include "courier.hpp"
 
 
-an::MatchingEngine::MatchingEngine(const an::location_t& exchange, SecurityDatabase& secdb, 
-                                   bool bookkeep)
+an::MatchingEngine::MatchingEngine(const location_t& exchange, SecurityDatabase& secdb, 
+                                   Courier& courier, bool bookkeep)
              : seq_(1),
              epoch_{ std::chrono::steady_clock::now(), std::chrono::system_clock::now() },
-             exchange_(exchange), secdb_(secdb), book_(), stats_(), rejects_(0), open_(false) {
+             exchange_(exchange), secdb_(secdb), courier_(courier), book_(), stats_(), rejects_(0), open_(false) {
     book_.reserve(secdb.securities().size() *2);
     for (const auto& sec : secdb.securities() ) {
         TickTable* ttPtr = secdb.tickTable(sec.ladder_id);
@@ -15,11 +16,12 @@ an::MatchingEngine::MatchingEngine(const an::location_t& exchange, SecurityDatab
             std::cout << sec.symbol << " skipping invalid tick_ladder_id " << sec.ladder_id << std::endl;
             continue;
         }
-        book_.emplace_back(sec.symbol,epoch_, *ttPtr, bookkeep, sec.closing_price);
+        book_.emplace_back(this, sec.symbol,epoch_, *ttPtr, bookkeep, sec.closing_price);
         if (!sec.has_died && (sec.exchange == exchange)) {
             book_.back().open();
         }
     }
+    courier_.inscribe(exchange_, this);
     open_ = true;
 }
 
@@ -31,7 +33,7 @@ void an::MatchingEngine::close() {
     for (auto& book : book_) {
         book.close();
     }
-    (void) stats();
+    (void) stats(); // Re-calculate before clearing
     book_.clear();
     stats_.symbols = book_.size();
     open_ = false;
@@ -113,13 +115,13 @@ an::Book* an::MatchingEngine::findBook(const symbol_t& symbol) {
 }
 
 void an::MatchingEngine::sendTradeReport(Order* o, direction_t d, shares_t s, price_t p) {
-    std::unique_ptr<TradeReport> tradeRep1(new TradeReport(o, d, s, p));
-    std::cout << *tradeRep1 << std::endl;
+    TradeReport tradeRep1(o, d, s, p);
+    courier_.send(tradeRep1);
 }
 
 void an::MatchingEngine::sendResponse(Message* o, response_t r, text_t t) {
-    std::unique_ptr<Response> response1(new Response(o, r, t));
-    std::cout << *response1 << std::endl;
+    Response rep(o, r, t);
+    courier_.send(rep);
 }
 
 an::engine_stats_t an::MatchingEngine::stats() {

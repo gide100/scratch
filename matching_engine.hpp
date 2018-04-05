@@ -8,6 +8,7 @@ namespace an {
 
 class Book;
 class SecurityDatabase ;
+class Courier ;
 
 struct epoch_t {
     std::chrono::steady_clock::time_point steadyClockStartTime;
@@ -53,8 +54,8 @@ struct engine_stats_t {
 
 class MatchingEngine {
     public:
-        MatchingEngine(const an::location_t& exchange, SecurityDatabase& secdb,
-                       bool bookkeep=true);
+        MatchingEngine(const location_t& exchange, SecurityDatabase& secdb,
+                       Courier& courier, bool bookkeep=true);
         ~MatchingEngine();
 
         void close();
@@ -73,8 +74,8 @@ class MatchingEngine {
         void applyOrder(std::unique_ptr<CancelOrder> o);
         void applyOrder(std::unique_ptr<AmendOrder> o);
 
-        static void sendTradeReport(Order* o, direction_t d, shares_t s, price_t p);
-        static void sendResponse(Message* o, response_t r, text_t t);
+        void sendTradeReport(Order* o, direction_t d, shares_t s, price_t p);
+        void sendResponse(Message* o, response_t r, text_t t);
 
         const epoch_t& epoch() const {
             return epoch_;
@@ -86,8 +87,9 @@ class MatchingEngine {
 
         sequence_t            seq_;
         epoch_t               epoch_;
-        an::location_t        exchange_;
-        an::SecurityDatabase& secdb_;
+        location_t            exchange_;
+        SecurityDatabase&     secdb_;
+        Courier&              courier_;
         std::vector<Book>     book_;
         engine_stats_t        stats_;
         counter_t             rejects_; // Non book rejects
@@ -403,8 +405,8 @@ class TickTable ;
 
 class Book {
     public:
-        explicit Book(symbol_t sym, epoch_t& epoch, TickTable& tt, bool bookkeep, price_t closing_price)
-            : symbol_(sym), open_(false), active_order_(), epoch_(epoch), tick_table_(tt), 
+        explicit Book(MatchingEngine* me, symbol_t sym, epoch_t& epoch, TickTable& tt, bool bookkeep, price_t closing_price)
+            : me_(me), symbol_(sym), open_(false), active_order_(), epoch_(epoch), tick_table_(tt), 
               bookkeep_(bookkeep), bookkeeper_(
                 std::chrono::system_clock::to_time_t(date::floor<date::days>(std::chrono::system_clock::now())),
                 closing_price, epoch_), 
@@ -412,7 +414,7 @@ class Book {
         }
 
         Book(const Book& book)
-            : symbol_(book.symbol_), epoch_(book.epoch_), tick_table_(book.tick_table_),
+            : me_(book.me_), symbol_(book.symbol_), epoch_(book.epoch_), tick_table_(book.tick_table_),
               bookkeep_(book.bookkeep_), bookkeeper_(book.bookkeeper_), buy_(book.buy_), sell_(book.sell_) {
             assert(book.open_!=true && "Cannot copy open book");
         }
@@ -462,13 +464,17 @@ class Book {
         }
     private:
         void sendResponse(Message* o, response_t r, text_t t) {
-            MatchingEngine::sendResponse(o, r, t);
+            if (me_ != nullptr) {
+                me_->sendResponse(o, r, t);
+            }
         }
         void sendTradeReport(Order* o, direction_t d, shares_t s, price_t p) {
             if (bookkeep_) {
                 bookkeeper_.trade(d, s, p, std::chrono::steady_clock::now());
             }
-            MatchingEngine::sendTradeReport(o,d,s,p);
+            if (me_ != nullptr) {
+                me_->sendTradeReport(o,d,s,p);
+            }
         }
         void sendCancel(Execution* exe, const text_t& text) {
             if (bookkeep_) {
@@ -539,15 +545,16 @@ class Book {
 
         bool marketableSide(Side& side, SideRecord& newRec, Execution* newExe);
 
-        symbol_t symbol_;
-        bool open_;
-        active_order_t active_order_;
-        epoch_t& epoch_;
-        TickTable& tick_table_;
-        bool bookkeep_;
-        Bookkeeper bookkeeper_;
-        Side buy_;
-        Side sell_;
+        MatchingEngine* me_;
+        symbol_t        symbol_;
+        bool            open_;
+        active_order_t  active_order_;
+        epoch_t&        epoch_;
+        TickTable&      tick_table_;
+        bool            bookkeep_;
+        Bookkeeper      bookkeeper_;
+        Side            buy_;
+        Side            sell_;
 }; // Book
 
 

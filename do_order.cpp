@@ -3,6 +3,7 @@
 #include "order.hpp"
 #include "security_master.hpp"
 #include "matching_engine.hpp"
+#include "courier.hpp"
 
 template <typename T>
 std::unique_ptr<T> make_unique_ptr(T* ptr) {
@@ -78,8 +79,12 @@ int main() {
         std::cout << s.to_string() << std::endl;
     }
 
+
+    std::cout << " *** COURIER ***" << std::endl;
+    an::Courier courier;
+
     std::cout << " *** ME ***" << std::endl;
-    an::MatchingEngine me(an::ME, secdb, true);
+    an::MatchingEngine me(an::ME, secdb, courier, true);
     me.applyOrder(std::move(lim30a));
     me.applyOrder(std::move(lim30b));
     me.applyOrder(std::move(lim30c));
