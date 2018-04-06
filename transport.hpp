@@ -17,9 +17,9 @@ namespace an {
 // *** SERVER ***
 template <typename ConnectionHandler>
 class asio_generic_server {
-    // Shared pointer to the type of the connection handler, this is the connectionbetween the client 
+    // Shared pointer to the type of the connection handler, this is the connection between the client
     // and the server. Who owns it? When it has nothing to send and no ability to read, or no internal
-    // work. It stays alive.
+    // work, it dies otherwise it stays alive.
     using shared_handler_t = std::shared_ptr<ConnectionHandler>;
 
     public:
