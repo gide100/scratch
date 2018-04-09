@@ -24,24 +24,23 @@ class asio_generic_server {
 
     public:
         // *** BROADCAST to all Clients ***
-        typedef std::string msg_t;
-        typedef std::deque<msg_t> chat_message_queue;
+        typedef std::deque<transport_msg_t> client_message_queue;
         class ClientBroadcast {
             public:
                 ClientBroadcast(std::size_t max_recent_msgs = 100) : max_recent_msgs_(max_recent_msgs) {
                 }
                 ~ClientBroadcast() { }
 
-                void join(shared_handler_t participant, msg_t client_name = "");
+                void join(shared_handler_t participant, transport_msg_t client_name = "");
 
                 void leave(shared_handler_t participant);
 
-                void deliver(const msg_t& msg, const msg_t& client_name = "");
+                void deliver(const transport_msg_t& msg, const transport_msg_t& client_name = "");
             private:
                 std::set<shared_handler_t> participants_;
-                std::unordered_map<msg_t, shared_handler_t> conn_name_;
+                std::unordered_map<transport_msg_t, shared_handler_t> conn_name_;
                 std::size_t max_recent_msgs_;
-                chat_message_queue recent_msgs_;
+                client_message_queue recent_msgs_;
         };
 
         asio_generic_server(int thread_count=1, long max_msgs=100) // TODO
@@ -49,14 +48,15 @@ class asio_generic_server {
         }
 
         void start_server(std::uint16_t port);
-        void wait_for(); // Join
-        void send(const msg_t& msg, const msg_t& to = "") {
+        void join_all(); // Join
+        void send(const transport_msg_t& msg, const transport_msg_t& to = "") {
             broadcast_.deliver(msg, to);
         }
     private:
         // New connection comes in this is called.
         void handle_new_connection(shared_handler_t handler, boost::system::error_code const& error);
 
+        // Similar to thread_group, see https://stackoverflow.com/questions/9894263/boostthread-group-in-c11
         int thread_count_;
         std::vector<std::thread> thread_pool_;
         boost::asio::io_context io_context_; // Server
@@ -65,7 +65,7 @@ class asio_generic_server {
 };
 
 template<typename ConnectionHandler>
-void an::asio_generic_server<ConnectionHandler>::start_server(std::uint16_t port) {
+void asio_generic_server<ConnectionHandler>::start_server(std::uint16_t port) {
     // Shared pointer to the type handling the connection
     auto handler = std::make_shared<ConnectionHandler>(io_context_, broadcast_); // IO service by reference
 
@@ -90,7 +90,7 @@ void an::asio_generic_server<ConnectionHandler>::start_server(std::uint16_t port
 }
 
 template<typename ConnectionHandler>
-void an::asio_generic_server<ConnectionHandler>::wait_for() {
+void asio_generic_server<ConnectionHandler>::join_all() {
     // Join the threads
     for(int i=0; i < thread_count_; ++i) {
         thread_pool_[i].join();
@@ -98,7 +98,7 @@ void an::asio_generic_server<ConnectionHandler>::wait_for() {
 }
 
 template<typename ConnectionHandler>
-void an::asio_generic_server<ConnectionHandler>::handle_new_connection(
+void asio_generic_server<ConnectionHandler>::handle_new_connection(
        shared_handler_t handler, const boost::system::error_code& error ) {
     if(error){
         //std::cout << "ERROR asio_generic_server<ConnectionHandler>::handle_new_connection" << std::endl;
@@ -126,10 +126,10 @@ void an::asio_generic_server<ConnectionHandler>::handle_new_connection(
 // this allows it to control its own lifetime.
 // Communicates with the client
 // Instantiate a new one of these each time a client connects.
-class chat_handler : public std::enable_shared_from_this<chat_handler> {
+class client_handler : public std::enable_shared_from_this<client_handler> {
     public:
-        chat_handler(boost::asio::io_context& context,
-                     asio_generic_server<chat_handler>::ClientBroadcast& broadcast)
+        client_handler(boost::asio::io_context& context,
+                     asio_generic_server<client_handler>::ClientBroadcast& broadcast)
             : context_(context), socket_(context_), write_strand_(context_), broadcast_(broadcast) {
         }
 
@@ -144,7 +144,7 @@ class chat_handler : public std::enable_shared_from_this<chat_handler> {
         // Can't write to multiple times to the send.
         // Post to queue the work to get done.
         void send(std::string msg) {
-            //std::cout << "chat_handler::send " << msg << std::endl;
+            //std::cout << "client_handler::send " << msg << std::endl;
             context_.post(
                 write_strand_.wrap(
                     [me=shared_from_this(),msg]() {
@@ -175,9 +175,10 @@ class chat_handler : public std::enable_shared_from_this<chat_handler> {
         boost::asio::io_context::strand write_strand_; // Prevents multiple writes to port
         boost::asio::streambuf          in_packet_; // Data coming in
         std::deque<std::string>         send_packet_queue_; // Data going out
-        asio_generic_server<chat_handler>::ClientBroadcast&   broadcast_;
+        asio_generic_server<client_handler>::ClientBroadcast&   broadcast_;
 };
 
 } // an - namespace
+
 #endif
 

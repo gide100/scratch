@@ -57,6 +57,9 @@ const std::string MY_LOCALE = "en_GB.UTF-8";
 const price_t MAX_SHARE_PRICE = 1000000.0;
 const shares_t MAX_OUTSTANDING_SHARES = 10000000000;
 
+// Transport
+typedef std::string transport_msg_t ;
+
 // Market Data
 struct market_data_t {                                                                                        
     location_t      origin;                                                                                   

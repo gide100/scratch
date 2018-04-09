@@ -2,12 +2,12 @@
 #include <iostream>
 
 template<typename ConnectionHandler>
-void an::asio_generic_server<ConnectionHandler>::ClientBroadcast::join(shared_handler_t participant, msg_t client_name) {
+void an::asio_generic_server<ConnectionHandler>::ClientBroadcast::join(shared_handler_t participant, transport_msg_t client_name) {
     participants_.insert(participant);
     if (client_name != "") {
         conn_name_.emplace(client_name, participant);
     }
-    for (const msg_t& msg: recent_msgs_) {
+    for (const transport_msg_t& msg: recent_msgs_) {
         std::cout << "ClientBroadcast::Join " << msg << " " << participants_.size() << std::endl;
         participant->send(msg);
     }
@@ -27,7 +27,7 @@ void an::asio_generic_server<ConnectionHandler>::ClientBroadcast::leave(shared_h
 
 
 template<typename ConnectionHandler>
-void an::asio_generic_server<ConnectionHandler>::ClientBroadcast::deliver(const msg_t& msg, const msg_t& client_name) {
+void an::asio_generic_server<ConnectionHandler>::ClientBroadcast::deliver(const transport_msg_t& msg, const transport_msg_t& client_name) {
     if (client_name == "") {
         recent_msgs_.push_back(msg);
         while (recent_msgs_.size() > max_recent_msgs_) {
@@ -49,7 +49,7 @@ void an::asio_generic_server<ConnectionHandler>::ClientBroadcast::deliver(const 
 
 
 
-void an::chat_handler::read_packet() {
+void an::client_handler::read_packet() {
     boost::asio::async_read_until(
         socket_,    // From
         in_packet_, // Destination (stream buffer)
@@ -62,10 +62,10 @@ void an::chat_handler::read_packet() {
 }
 
 
-void an::chat_handler::read_packet_done( boost::system::error_code const& error, std::size_t bytes_transferred ) {
+void an::client_handler::read_packet_done( boost::system::error_code const& error, std::size_t bytes_transferred ) {
     if (error) {
         // On error fall out (don't re-queue read).
-        std::cout << "ERROR chat_handler::read_packet_done" << std::endl;
+        std::cout << "ERROR client_handler::read_packet_done" << std::endl;
         return; // bail
     }
 
@@ -98,9 +98,9 @@ void an::chat_handler::read_packet_done( boost::system::error_code const& error,
 }
 
 
-void an::chat_handler::start_packet_send() {
+void an::client_handler::start_packet_send() {
     send_packet_queue_.front() += "\0";
-    std::cout << "chat_handler::start_packet_send " << send_packet_queue_.front() << std::endl;
+    std::cout << "client_handler::start_packet_send " << send_packet_queue_.front() << std::endl;
     boost::asio::async_write( socket_,
         boost::asio::buffer(send_packet_queue_.front()), // Pass location in deque
             write_strand_.wrap(
@@ -112,14 +112,14 @@ void an::chat_handler::start_packet_send() {
 }
 
 
-void an::chat_handler::packet_send_done(boost::system::error_code const& error) {
+void an::client_handler::packet_send_done(boost::system::error_code const& error) {
     if(!error) {
         send_packet_queue_.pop_front(); // Remove from deque
         if(!send_packet_queue_.empty()) {  // More work? do it
             start_packet_send();
         }
     } else {
-        std::cout << "ERROR chat_handler::packet_send_done "
+        std::cout << "ERROR client_handler::packet_send_done "
                   << boost::system::system_error(error).what() << std::endl;
     }
 }
