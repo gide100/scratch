@@ -60,6 +60,7 @@ exe time_test : time_test.cpp system boost_chrono ;
 exe info : info.cpp system thread ;
 exe do_order : do_order.cpp order.cpp security_master.cpp matching_engine.cpp courier.cpp system thread ;
 exe unittest_example : unittest_example.cpp system thread unittest ;
+exe unittest_types : unittest_types.cpp system unittest ;
 exe unittest_order : unittest_order.cpp order.cpp matching_engine.cpp courier.cpp system thread unittest ;
 exe unittest_security : unittest_security.cpp security_master.cpp system thread unittest ;
 exe unittest_matching : unittest_matching.cpp order.cpp security_master.cpp matching_engine.cpp courier.cpp system thread unittest ;
