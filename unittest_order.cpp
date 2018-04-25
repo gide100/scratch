@@ -32,31 +32,34 @@ BOOST_AUTO_TEST_SUITE(all_orders)
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(make_orders)
+    an::Author a;
     BOOST_AUTO_TEST_CASE(limit_order01) {
-        an::Message* o1 = an::Order::makeOrder("origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50:type=LIMIT:id=123");
+        std::unique_ptr<an::Message> o1(a.makeOrder("origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50:type=LIMIT:id=123"));
         BOOST_CHECK_EQUAL(o1->to_string(),"type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50:price=92.0");
     }
     BOOST_AUTO_TEST_CASE(market_order01) {
-        an::Message* o1 = an::Order::makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
-        BOOST_CHECK_EQUAL(o1->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
+        std::unique_ptr<an::Message> o2(a.makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50"));
+        BOOST_CHECK_EQUAL(o2->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
     }
     BOOST_AUTO_TEST_CASE(cancel_order01) {
-        an::Message* o1 = an::Order::makeOrder("type=CANCEL:id=123:origin=Client1:destination=ME:symbol=APPL");
+        std::unique_ptr<an::Message> o1(a.makeOrder("type=CANCEL:id=123:origin=Client1:destination=ME:symbol=APPL"));
         BOOST_CHECK_EQUAL(o1->to_string(),"type=CANCEL:id=123:origin=Client1:destination=ME:symbol=APPL");
     }
     BOOST_AUTO_TEST_CASE(amend_order01) {
-        an::Message* o1 = an::Order::makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:price=99.99");
+        std::unique_ptr<an::Message> o1(a.makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:price=99.99"));
         BOOST_CHECK_EQUAL(o1->to_string(),"type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:price=99.99");
-        an::Message* o2 = an::Order::makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:shares=99");
+        std::unique_ptr<an::Message> o2(a.makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:shares=99"));
         BOOST_CHECK_EQUAL(o2->to_string(),"type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:shares=99");
     }
 BOOST_AUTO_TEST_SUITE_END()
 
+
 BOOST_AUTO_TEST_SUITE(replies)
+    an::Author a;
     BOOST_AUTO_TEST_CASE(response_01) {
-        an::Message* o1 = an::Order::makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
+        std::unique_ptr<an::Message> o1(a.makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50"));
         BOOST_CHECK_EQUAL(o1->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
-        an::Response res1(o1,an::ACK,"OK");
+        an::Response res1(o1.get(),an::ACK,"OK");
         BOOST_CHECK_EQUAL(res1.to_string(),"type=MARKET:id=123:origin=ME:destination=Client1:symbol=MSFT:direction=BUY:shares=50:response=ACK:text=OK");
     }
     BOOST_AUTO_TEST_CASE(response_02) {
@@ -94,8 +97,9 @@ BOOST_AUTO_TEST_SUITE_END()
 
 
 BOOST_AUTO_TEST_SUITE(make_login)
+    an::Author a;
     BOOST_AUTO_TEST_CASE(login_01) {
-        an::Message* o1 = an::Message::makeOrder("type=LOGIN:origin=Client1:destination=ME");
+        std::unique_ptr<an::Message> o1(a.makeOrder("type=LOGIN:origin=Client1:destination=ME"));
         BOOST_CHECK_EQUAL(o1->to_string(),"type=LOGIN:origin=Client1:destination=ME");
         o1->reverse_direction();
         BOOST_CHECK_EQUAL(o1->to_string(),"type=LOGIN:origin=ME:destination=Client1");
@@ -119,102 +123,109 @@ bool test(std::exception const& ex) {
 }
 
 BOOST_AUTO_TEST_SUITE(make_orders_bad)
-    //BOOST_CHECK_EXCEPTION( { an::Order 0 = an::Order::makeOrder("type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50") }, an::OrderError, CheckMessage("Invalid order type []") );
-    int x = 0;
+    an::Author a;
     BOOST_AUTO_TEST_CASE(missing_type_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50"),  // type=LIMIT missing
-        an::OrderError, CheckMessage("Invalid order type []") );
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50"),  // type=LIMIT missing
+        an::OrderError, CheckMessage("Invalid/unset order type []") );
     }
     BOOST_AUTO_TEST_CASE(missing_type_02) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=XXX:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50"),  // type=XXX unknown
-        an::OrderError, CheckMessage("Invalid order type [XXX]") );
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=XXX:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50"),  // type=XXX unknown
+        an::OrderError, CheckMessage("Invalid/unset order type [XXX]") );
     }
     BOOST_AUTO_TEST_CASE(missing_type_03) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50"),  // type=XXX unknown
-        an::OrderError, CheckMessage("Invalid order type []") );
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50"),  // type=XXX unknown
+        an::OrderError, CheckMessage("Invalid/unset order type []") );
     }
     BOOST_AUTO_TEST_CASE(market_invalid_type_04) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type"),  // Nothing after equals
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type"),  // Nothing after equals
         an::OrderError, CheckMessage("Bad token missing seperator (=) [type]") );
     }
     BOOST_AUTO_TEST_CASE(market_invalid_token_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("xxx=LIMIT"),  // Unknown token
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("xxx=LIMIT"),  // Unknown token
         an::OrderError, CheckMessage("Unused token [xxx,LIMIT]") );
     }
+    BOOST_AUTO_TEST_CASE(market_invalid_token_02) {
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("123456789012345678901=LIMIT"),  // Too long
+        an::OrderError, CheckMessage("Bad tag too long (>20) [123456789012345678901]") );
+    }
+    BOOST_AUTO_TEST_CASE(market_invalid_token_03) {
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901"),  // Too long, 101
+        an::OrderError, CheckMessage("Bad value too long (>100) [12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901]") );
+    }
     BOOST_AUTO_TEST_CASE(missing_id_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=LIMIT:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50"),
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=LIMIT:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50"),
         an::OrderError, CheckMessage("Invalid flags got 111111010 expected 111111110") );
     }
     BOOST_AUTO_TEST_CASE(missing_origin_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=LIMIT:id=123:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50"),
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=LIMIT:id=123:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50"),
         an::OrderError, CheckMessage("Invalid flags got 111110110 expected 111111110") );
     }
     BOOST_AUTO_TEST_CASE(missing_destination_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=LIMIT:id=123:origin=Client1:symbol=MSFT:direction=BUY:price=92.0:shares=50"),
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=LIMIT:id=123:origin=Client1:symbol=MSFT:direction=BUY:price=92.0:shares=50"),
         an::OrderError, CheckMessage("Invalid flags got 111101110 expected 111111110") );
     }
     BOOST_AUTO_TEST_CASE(missing_symbol_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=LIMIT:id=123:origin=Client1:destination=ME:direction=BUY:price=92.0:shares=50"),
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=LIMIT:id=123:origin=Client1:destination=ME:direction=BUY:price=92.0:shares=50"),
         an::OrderError, CheckMessage("Invalid flags got 111011110 expected 111111110") );
     }
     BOOST_AUTO_TEST_CASE(missing_direction_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:price=92.0:shares=50"),
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:price=92.0:shares=50"),
         an::OrderError, CheckMessage("Invalid flags got 110111110 expected 111111110") );
     }
     BOOST_AUTO_TEST_CASE(missing_shares_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0"),
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0"),
         an::OrderError, CheckMessage("Invalid flags got 101111110 expected 111111110") );
     }
     BOOST_AUTO_TEST_CASE(missing_price_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50"),
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50"),
         an::OrderError, CheckMessage("Invalid flags got 011111110 expected 111111110") );
     }
     BOOST_AUTO_TEST_CASE(market_extra_price_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50:price=92.0"),  // price not needed
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50:price=92.0"),  // price not needed
         an::OrderError, CheckMessage("Invalid flags got 111111110 expected 011111110") );
     }
     BOOST_AUTO_TEST_CASE(amend_missing_id_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=AMEND:origin=Client1:destination=ME:symbol=APPL:shares=50"),
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=AMEND:origin=Client1:destination=ME:symbol=APPL:shares=50"),
         an::OrderError, CheckMessage("Invalid flags got 000111010 expected 000111110") );
     }
     BOOST_AUTO_TEST_CASE(amend_extra_direction_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:direction=BUY"), // Can't amend direction
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:direction=BUY"), // Can't amend direction
         an::OrderError, CheckMessage("Invalid flags got 001111110 expected 000111110") );
     }
     BOOST_AUTO_TEST_CASE(amend_option_not_given_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL"), 
-        an::OrderError, CheckMessage("Invalid amend (none given)") );
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL"), 
+        an::OrderError, CheckMessage("Order type [AMEND] missing selectable fields") );
     }
     BOOST_AUTO_TEST_CASE(amend_shares_invalid_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:shares=0"), 
-        an::OrderError, CheckMessage("Invalid amend number of shares too small") );
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:shares=0"), 
+        an::OrderError, CheckMessage("Reader [shares] did not process [shares,0]") );
     }
     BOOST_AUTO_TEST_CASE(amend_shares_invalid_02) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:shares=-10"), 
-        an::OrderError, CheckMessage("Invalid shares - out of range") );
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:shares=-10"), 
+        an::OrderError, CheckMessage("Reader [shares] did not process [shares,-10]") );
     }
     BOOST_AUTO_TEST_CASE(cancel_missing_id_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=CANCEL:origin=Client1:destination=ME:symbol=APPL"), // missing id
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=CANCEL:origin=Client1:destination=ME:symbol=APPL"), // missing id
         an::OrderError, CheckMessage("Invalid flags got 000111010 expected 000111110") );
     }
     BOOST_AUTO_TEST_CASE(cancel_missing_symbol_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=CANCEL:id=123:origin=Client1:destination=ME"), // missing symbol
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=CANCEL:id=123:origin=Client1:destination=ME"), // missing symbol
         an::OrderError, CheckMessage("Invalid flags got 000011110 expected 000111110") );
     }
     BOOST_AUTO_TEST_CASE(cancel_id_zero_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=CANCEL:id=0:origin=Client1:destination=ME:symbol=APPL"), // id is zero
-        an::OrderError, CheckMessage("Invalid id set to 0") );
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=CANCEL:id=0:origin=Client1:destination=ME:symbol=APPL"), // id is zero
+        an::OrderError, CheckMessage("Reader [id] did not process [id,0]") );
     }
     BOOST_AUTO_TEST_CASE(cancel_extra_price_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=CANCEL:id=123:origin=Client1:destination=ME:symbol=APPL:price=99.0"),
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=CANCEL:id=123:origin=Client1:destination=ME:symbol=APPL:price=99.0"),
         an::OrderError, CheckMessage("Invalid flags got 100111110 expected 000111110") );
     }
     BOOST_AUTO_TEST_CASE(market_invalid_direction_01) {
-        BOOST_CHECK_EXCEPTION( (void)an::Order::makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=XXX:shares=50:price=92.0"),  // Invalid direction
-        an::OrderError, CheckMessage("Invalid direction [XXX]") );
+        BOOST_CHECK_EXCEPTION( (void)a.makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=XXX:shares=50:price=92.0"),  // Invalid direction
+        an::OrderError, CheckMessage("Reader [direction] did not process [direction,XXX]") );
     }
     BOOST_AUTO_TEST_CASE(response_bad_01) {
-       an::Message* o1 = an::Order::makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
+       an::Message* o1 = a.makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
        BOOST_CHECK_EQUAL(o1->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
        BOOST_CHECK_EXCEPTION(an::Response res1(o1,an::ACK,"Error:message"), an::OrderError, CheckMessage("Cannot have [:|=|\\n] in Response text") );
        BOOST_CHECK_EXCEPTION(an::Response res2(o1,an::ACK,"Error=message"), an::OrderError, CheckMessage("Cannot have [:|=|\\n] in Response text") );

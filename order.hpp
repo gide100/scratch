@@ -42,11 +42,27 @@ struct amend_t {
 
 class MatchingEngine ;
 struct SideRecord ;
+struct InputResult;
+struct AuthorImpl;
+class Message;
+
+// Author reads/creates messages
+struct Author { // : private boost::noncopyable {
+    public:
+        Author();
+        ~Author();
+
+        Message* makeOrder(const std::string& input);
+    protected:
+        void parse(InputResult& res, const std::string& input);
+        Message* create(const InputResult& res);
+    private:
+        std::unique_ptr<AuthorImpl> impl_;
+};
 
 class Message {
     public:
-        Message(location_t origin, location_t dest = ME)
-            : origin_(origin), destination_(dest), reverse_direction_(false) {}
+        Message(location_t origin, location_t dest = ME);
 
         virtual std::string to_string() const = 0;
         virtual ~Message() = 0;
