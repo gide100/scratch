@@ -19,7 +19,10 @@
 #include <cmath>
 #include <memory>
 #include "date.h"
+#include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
+#include <boost/operators.hpp>
+#include <iostream>
 
 namespace an {
 // Orders
@@ -35,7 +38,7 @@ typedef std::chrono::steady_clock::time_point since_t;
 
 enum direction_t { BUY, SELL };
 enum order_t { LIMIT, MARKET, CANCEL, AMEND };
-enum response_t { ACK, COMPLETE, REJECT, CANCELLED, UNKNOWN, ERROR }; 
+enum response_t { ACK, COMPLETE, REJECT, CANCELLED, UNKNOWN, ERROR };
 typedef std::string text_t;
 typedef double volume_t;
 typedef std::int64_t counter_t;
@@ -61,23 +64,28 @@ const shares_t MAX_OUTSTANDING_SHARES = 10000000000;
 typedef std::string transport_msg_t ;
 
 // Market Data
-struct market_data_t {                                                                                        
-    location_t      origin;                                                                                   
-    symbol_t        symbol;                                                                                   
+struct market_data_t {
+    location_t      origin;
+    symbol_t        symbol;
     bool            have_bid;
-    price_t         bid;                                                                                      
-    shares_t        bid_size;                                                                                 
+    price_t         bid;
+    shares_t        bid_size;
     bool            have_ask;
-    price_t         ask;                                                                                      
-    shares_t        ask_size;                                                                                 
-    bool            have_last_trade;                                                                          
-    price_t         last_trade_price;                                                                         
-    shares_t        last_trade_shares;                                                                        
-    timestamp_t     trade_time;                                                                               
-    timestamp_t     quote_time;                                                                               
-    volume_t        volume;                                                                                   
-};                                                                                                            
-     
+    price_t         ask;
+    shares_t        ask_size;
+    bool            have_last_trade;
+    price_t         last_trade_price;
+    shares_t        last_trade_shares;
+    timestamp_t     trade_time;
+    timestamp_t     quote_time;
+    volume_t        volume;
+};
+
+// Old school Pascal ord (ordinal) function, converts from an enum to its underlying type (e.g. size_t or int)
+template <typename E>
+constexpr auto ord(E enumerator) noexcept {
+    return static_cast< std::underlying_type_t<E> >(enumerator);
+}
 
 inline const char* to_string(direction_t d) {
      switch (d) {
@@ -93,7 +101,7 @@ inline const char* to_string_book(direction_t d) {
         case BUY: return "BID";
         case SELL: return "ASK";
         default:
-           assert(false);                                                                                     
+           assert(false);
      }
 }
 
@@ -164,7 +172,7 @@ inline double roundToAny(double number, double round_value) {
 
 
 inline double truncate(double d) {
-    return (d>0) ? std::floor(d) : std::ceil(d) ; 
+    return (d>0) ? std::floor(d) : std::ceil(d) ;
 }
 
 
@@ -187,7 +195,7 @@ inline int compare3decimalplaces(double lhs, double rhs) {
 inline std::string floatFormat(double num, int width) {
     if (num == 0.0) {
         return "0.0";
-    }            
+    }
     int d = (int)std::ceil(std::log10(num < 0 ? -num : num)); /*digits before decimal point*/
     double order = std::pow(10.0, width - d);
     std::stringstream ss;
@@ -196,7 +204,7 @@ inline std::string floatFormat(double num, int width) {
 }
 
 inline std::string floatDecimalPlaces(double value, int precision) {
-    assert(precision >= 0 && "floatDecimalPlaces negative precision not allowed"); 
+    assert(precision >= 0 && "floatDecimalPlaces negative precision not allowed");
     // https://stackoverflow.com/questions/900326/how-do-i-elegantly-format-string-in-c-so-that-it-is-rounded-to-6-decimal-place
     // https://stackoverflow.com/questions/2475642/how-to-achieve-the-following-c-output-formatting
     std::ostringstream ss;
@@ -230,8 +238,147 @@ inline std::string floatDecimalPlaces(double value, int precision) {
 //       << std::setfill('0') << std::setw(3) << ms.count() ;
 //    return os.str();
 //}
+// ************************ PSTRING ************************
+// Pascal like string
+// https://stackoverflow.com/questions/7n648947/declaring-pascal-style-strings-in-c
+struct PString : public boost::totally_ordered< PString > {
+    public:
+        static const std::int32_t MAX_PSTRING_LEN = (1<<15)-1; //32k
 
+        PString() : length_(0), str_(nullptr) {
+            //std::cout << "PString " << std::endl;
+        }
+        explicit PString(const char* s) : length_(s==nullptr? 0 : strnlen(s,MAX_PSTRING_LEN+1)), str_(s) {
+            //std::cout << "PString::char* " << length_ << std::endl;
+            if (length_ > MAX_PSTRING_LEN) {
+                throw std::runtime_error("PString too long");
+            }
+        }
+        explicit PString(const char* s, std::int32_t len) : length_(s==nullptr? 0 : len), str_(s) {
+            //std::cout << "PString::char* len " << length_ << std::endl;
+            if (length_ > MAX_PSTRING_LEN) {
+                throw std::runtime_error("PString too long");
+            }
+        }
+        explicit PString(const std::string& s) : length_(s.size()), str_(s.c_str()) {
+            //std::cout << "PString::string " << length_ << std::endl;
+            if (s.length() > MAX_PSTRING_LEN) {
+                throw std::runtime_error("PString too long");
+            }
+        }
+        PString(const PString& p) noexcept : length_(p.length_), str_(p.str_) {
+            //std::cout << "PString::const PString " << std::endl;
+        }
+        explicit PString(PString&& p) noexcept : length_(p.length_), str_(p.str_) {
+            //std::cout << "PString::PString&& " << std::endl;
+        }
+        //explicit PString(std::string&& s) noexcept : length_(s.size()), str_(s.c_str()) {
+        //    std::cout << "PString::string&& " << std::endl;
+        //}
+
+        ~PString() { length_=0; str_=nullptr; }
+
+        void assign(const char* s, std::int32_t len) {
+            if (len > MAX_PSTRING_LEN) {
+                throw std::runtime_error("PString too long");
+            }
+            str_ = s; length_ = len;
+        }
+
+        std::string to_string() const {
+            std::string s(str_,length_);
+            return s;
+        }
+
+        friend inline bool operator==(const PString& lhs, const PString& rhs);
+        friend inline bool operator<(const PString& lhs, const PString& rhs);
+
+        PString& operator=(const PString& rhs) {
+            // check for self-assignment
+            if(&rhs == this) {
+                return *this;
+            }
+            length_ = rhs.length_;
+            str_ = rhs.str_;
+            return *this;
+        }
+
+        template <typename INT> friend bool pstring2int(INT* res, PString s);
+
+        std::size_t hash() const {
+            return hash_c_string(str_, length_);
+        }
+
+
+        static constexpr std::size_t hash_c_string(const char* p, size_t s) {
+            std::size_t result = 0;
+            const std::size_t prime = 31;
+            for (size_t i = 0; i < s; ++i) {
+                result = p[i] + (result * prime);
+            }
+            return result;
+        }
+        std::int32_t    length_;
+        const char*     str_; // Null terminated. No ownership
+};
+
+inline bool operator==(const PString& lhs, const PString& rhs) {
+    return (lhs.length_ == rhs.length_) && (std::strncmp(lhs.str_, rhs.str_, lhs.length_) == 0);
+}
+
+inline bool operator<(const PString& lhs, const PString& rhs) {
+    auto len = std::min(lhs.length_,rhs.length_);
+    int i = 0;
+    while (i < len) {
+        if (lhs.str_[i] != rhs.str_[i]) {
+            return lhs.str_[i] < rhs.str_[i];
+        }
+        ++i;
+    }
+    return (i == lhs.length_) && (i != rhs.length_);
+}
+
+template <typename INT>
+bool pstring2int(INT* res, PString s) {
+    if ((s.str_ == nullptr) || (s.length_ == 0)) {
+        return 0;
+    }
+    bool neg = false;
+    int32_t i = 0;
+    if (s.str_[i] == '-') {
+        neg = true;
+        ++i;
+    } else if (s.str_[i] == '+') {
+        ++i;
+    }
+    INT ret = 0;
+    for(; i < s.length_; ++i) {
+        if (!std::isdigit(s.str_[i])) {
+            return false;
+        }
+        ret = ret * 10 + (s.str_[i] - '0');
+        if ((i+1) != s.length_) { // Not at end 
+            if ( ret > (std::numeric_limits<INT>::max() / INT(10)) ) {
+                return false;
+            }
+        }
+    }
+    if (neg) {
+        *res = -ret;
+    } else {
+        *res = ret;
+    }
+    return true;
+}
 
 } // an - namespace
+
+namespace std {
+    template <> struct hash<an::PString> {
+        size_t operator()(const an::PString& s) const {
+            return s.hash();
+        }
+    };
+}
 
 #endif
