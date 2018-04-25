@@ -65,6 +65,12 @@ int main() {
     std::cout << *amd10a << std::endl;
     auto amd10b = make_unique_ptr(new an::AmendOrder(201,"Client1",an::ME,"MSFT",94.5));
     std::cout << *amd10b << std::endl;
+    an::Message* o1 = an::Order::makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:price=99.99");
+    std::cout << o1->to_string() << std::endl;
+    an::Message* o2 = an::Order::makeOrder("type=AMEND:id=123:origin=Client2:destination=ME:symbol=APPL:price=99.99");
+    std::cout << o2->to_string() << std::endl;
+    std::unique_ptr<an::AmendOrder> amd20a(static_cast<an::AmendOrder*>(
+        an::Message::makeOrder("type=AMEND:id=201:origin=Client1:destination=ME:symbol=MSFT:price=94.3")));
 
     std::cout << " *** TICK ***" << std::endl;
     an::TickLadder tickdb;
