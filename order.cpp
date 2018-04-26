@@ -320,7 +320,8 @@ static constexpr TagFlags STD_FLAGS = TagFlags { (1 << ord(Tag::Type))   | (1 <<
                                                  (1 << ord(Tag::Origin)) | (1 << ord(Tag::Destination)) };
 
 struct an::AuthorImpl {
-    AuthorImpl() : all_fields_{
+    AuthorImpl() : 
+        orderFields_{
             { PString("type"),         Reader(PString("type"),        Tag::Type,        &in_.myType) }
            ,{ PString("id"),           Reader(PString("id"),          Tag::Id,          &in_.myId,
                                                       nullptr,        convert_t::NATURAL_UINTEGER ) }
@@ -368,7 +369,7 @@ struct an::AuthorImpl {
         }, in_() { 
     }
 
-    std::unordered_map<PString,Reader> all_fields_;
+    std::unordered_map<PString,Reader> orderFields_;
     std::unordered_map< an::PString, Factory > orderType_;
     //std::unordered_map< std::pair<an::PString,ulong>, Factory, boost::hash<std::pair<an::PString,ulong> > > orderType_;
     an::InputResult in_;
@@ -383,7 +384,7 @@ an::Author::~Author() {
 
 
 void an::Author::parse(an::InputResult& inRes, const std::string& input) {
-    std::unordered_map<PString,Reader>& all_fields = impl_->all_fields_;
+    std::unordered_map<PString,Reader>& orderFields = impl_->orderFields_;
 
     StrIter myEnd = input.cend();
     StrIter myBegin = input.cbegin();
@@ -393,8 +394,8 @@ void an::Author::parse(an::InputResult& inRes, const std::string& input) {
     while(myBegin != myEnd) {
         auto myDelim = mySplit2(res, myBegin, myEnd);
         //std::cout << "Split - [" << res.tag.to_string() << ',' << res.value.to_string() << "]" << std::endl;
-        auto iter = all_fields.find(res.tag);
-        if (iter != all_fields.end()) {
+        auto iter = orderFields.find(res.tag);
+        if (iter != orderFields.end()) {
             auto& reader = iter->second;
             if (!reader.to(inRes.myFlags, res.value)) {
                 std::stringstream ss;
@@ -419,43 +420,6 @@ void an::Author::parse(an::InputResult& inRes, const std::string& input) {
 
 
 an::Message* an::Author::create(const an::InputResult& res) {
-    /*
-     constexpr TagFlags STD_FLAGS( (1 << ord(Tag::Type)) | (1 << ord(Tag::Id)) | (1 << ord(Tag::Origin))
-                                | (1 << ord(Tag::Destination)) );
-    static const std::unordered_map< std::pair<an::PString,ulong>, Factory, boost::hash<std::pair<an::PString,ulong> > > orderType {
-        { std::make_pair(PString("LIMIT"), 0),
-          Factory{ .create = Creator(PString("LIMIT")),
-            .flags = TagFlags( STD_FLAGS | TagFlags((1 << ord(Tag::Symbol)) | (1 << ord(Tag::Direction)) 
-                                                  | (1 << ord(Tag::Shares)) | (1 << ord(Tag::Price))) ),
-            .select = TagFlags(0),
-            .optional = TagFlags(0)  } 
-        },
-        { std::make_pair(PString("MARKET"), 0),
-          Factory{ .create = Creator(PString("MARKET")),
-            .flags = TagFlags( STD_FLAGS | TagFlags( (1 << ord(Tag::Symbol)) | (1 << ord(Tag::Direction)) | (1 << ord(Tag::Shares)) ) ),
-            .select = TagFlags(0),
-            .optional = TagFlags(0)  } 
-        },
-        { std::make_pair(PString("CANCEL"), 0),
-          Factory{ .create = Creator(PString("CANCEL")),
-            .flags = TagFlags( STD_FLAGS | TagFlags(1 << ord(Tag::Symbol)) ),
-            .select = TagFlags(0),
-            .optional = TagFlags(0)  } 
-        },
-        { std::make_pair(PString("AMEND"), 0),
-          Factory{ .create = Creator(PString("AMEND")),
-            .flags = TagFlags( STD_FLAGS | TagFlags(1 << ord(Tag::Symbol)) ),
-            .select = TagFlags( (1 << ord(Tag::Shares)) | (1 << ord(Tag::Price)) ),
-            .optional = TagFlags(0)  } 
-        },
-        { std::make_pair(PString("LOGIN"), 0), 
-          Factory{ .create = Creator(PString("LOGIN")),
-            .flags = TagFlags( (1 << ord(Tag::Type)) | (1 << ord(Tag::Origin)) | (1 << ord(Tag::Destination)) ),
-            .select = TagFlags(0),
-            .optional = TagFlags(0)  } 
-        }
-    };
-    */
     std::unordered_map< an::PString, Factory>& orderType = impl_->orderType_;
 
     assert( (orderType.find(an::PString("")) == orderType.end()) && "Empty is an invalid type");
@@ -483,50 +447,6 @@ an::Message* an::Author::create(const an::InputResult& res) {
         throw OrderError(os.str());
     }
     Message* messagePtr = found->second.create(res);
-/*
-    Message* myOrder = nullptr;
-    TagFlags f; f.set(ord(Tag::Type)); f.set(ord(Tag::Id)); f.set(ord(Tag::Origin)); 
-                  f.set(ord(Tag::Destination)); f.set(ord(Tag::Symbol));
-    if (myType == "LIMIT") {
-        f.set(ord(Tag::Direction)); f.set(ord(Tag::Shares)); f.set(ord(Tag::Price));
-        checkFlags(f, myFlags);
-        an::LimitOrder* o = new an::LimitOrder(myId, myOrigin, myDestination, mySymbol, myDirection, myShares, myPrice);
-        myOrder = o;
-    } else if (myType == "MARKET") {
-        f.set(ord(Tag::Direction)); f.set(ord(Tag::Shares));
-        checkFlags(f, myFlags);
-        an::MarketOrder* o = new an::MarketOrder(myId, myOrigin, myDestination, mySymbol, myDirection, myShares);
-        myOrder = o;
-    } else if (myType == "CANCEL") {
-        checkFlags(f, myFlags);
-        an::CancelOrder* o = new an::CancelOrder(myId, myOrigin, myDestination, mySymbol);
-        myOrder = o;
-    } else if (myType == "AMEND") {
-        TagFlags f1(myFlags); f1.reset(ord(Tag::Price)); f1.reset(ord(Tag::Shares));
-        checkFlags(f, f1);
-        an::AmendOrder* o = nullptr;
-        if (myFlags[ord(Tag::Price)]) {
-            o = new an::AmendOrder(myId, myOrigin, myDestination, mySymbol, myPrice);
-        } else if (myFlags[ord(Tag::Shares)]) {
-            if (myShares <= 0) {
-                throw OrderError("Invalid amend number of shares too small");
-            }
-            o = new an::AmendOrder(myId, myOrigin, myDestination, mySymbol, myShares);
-        } else {
-            throw OrderError("Invalid amend (none given)");
-        }
-        myOrder = o;
-    } else if (myType == "LOGIN") {
-        TagFlags f1; f1.set(ord(Tag::Type)); f1.set(ord(Tag::Origin)); f1.set(ord(Tag::Destination));
-        checkFlags(f1, myFlags);
-        an::Login* o = new an::Login(myOrigin, myDestination);
-        myOrder = o;
-    } else {
-        std::stringstream ss;
-        ss << "Invalid order type [" << myType << "]";
-        throw OrderError(ss.str());
-    }
-    */
     return messagePtr;
 }
 

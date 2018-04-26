@@ -29,11 +29,11 @@ struct amend_t {
 
     const char* get_field_name() const {
         switch (field) {
-          case NONE: return "none"; break;
-          case PRICE: return "price"; break;
-          case SHARES: return "shares"; break;
-          default:
-            return "unknown:field_t";
+            case NONE: return "none"; break;
+            case PRICE: return "price"; break;
+            case SHARES: return "shares"; break;
+            default:
+                return "unknown:field_t";
         }
     }
 };
