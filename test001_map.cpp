@@ -5,6 +5,20 @@
 #include <sstream>
 #include <cassert>
 #include <algorithm>
+/*
+ * Author: G A Nwawudu
+ * Date:   2018/05/16
+ *
+ * Purpose:
+ * To solve problem datailed in test001_map.docx
+ * 
+ * Compile:
+ * g++ -std=gnu++14 -fdiagnostics-color=always -o test test001_map.cpp && ./test
+ *
+ * g++ -std=gnu++14 -fdiagnostics-color=always -fprofile-arcs -ftest-coverage -o test test001_map.cpp && ./test 
+ * gcov test001_map.cpp
+ *
+ */
 
 template<class K, class V>
 
@@ -32,16 +46,10 @@ public:
     // and assign must do nothing.
     void assign( K const& keyBegin, K const& keyEnd, V const& val ) {
         std::cout << "Assign >=" << keyBegin << " <" << keyEnd << " " << val << std::endl;
-        if (keyBegin >= keyEnd) {
+        if (!(keyBegin < keyEnd)) {
             return;
         }
         assert(!m_map.empty() && "map empty");
-        // 1) Find less than or equal to keyBegin
-        // 1a) If found less than
-        // 1aa) if val is same as lower do nothing (store range)
-        // 1ab) Else insert entry (store range)
-        // 1b) If found equal 
-        // 1ba) 
         
         // Find less than keyBegin
         auto itBegin = m_map.lower_bound(keyBegin); //GTE
@@ -49,11 +57,11 @@ public:
         // Find previous
         bool havePrev = itBegin!=m_map.begin();
         auto itPrev = itBegin;
-        V valPrev;
+        V valPrev = 0;
         if (havePrev) {
-            --itPrev; valPrev = itPrev->second;
+            itPrev = std::prev(itBegin);
+            valPrev = itPrev->second;
         }
-
         
         if (haveEqual && havePrev) {
             // Previous and Equal, compare... same remove, different replace
@@ -62,6 +70,7 @@ public:
                 itBegin = itPrev;
                 //std::cout << "HERE" << __LINE__ << std::endl;
             } else {
+                valPrev = itBegin->second; // havePrev = true;
                 itBegin->second = val;
             }
         } else if (havePrev) {
@@ -79,52 +88,39 @@ public:
         assert(itBegin->first <= keyBegin && "Must be less than or equal keyBegin");
         assert(itBegin->second == val && "Added first val");
 
-        // Find less than keyEnd
-        // (Reverse) find the first item less than keyEnd, exclude inserted keyBegin
-        auto myrend = make_reverse_iterator(itBegin); 
-        if (myrend != m_map.rend()) {
-            std::cout << "HERE" << __LINE__ << std::endl;
-            myrend = std::prev(myrend);
-        }
-        auto rit = lower_bound(m_map.rbegin(), myrend, keyEnd, 
-                                [](const std::pair<const K,V>& l, K r) -> bool
-                                { 
-                                  return !(l.first < r);
-                                } );
-
-        typename std::map<K,V>::iterator it2; 
-        std::cout << "rit=" << rit->first << " rbegin=" << m_map.rbegin()->first << " myrend=" << myrend->first << " itBegin=" << itBegin->first << std::endl;
-        if (rit != myrend) {
-            it2 = std::next(rit).base(); // Fwd iterator of found value
-            if (it2 != m_map.begin()) { // Not first item, (i.e. not 0) set previous
-                valPrev = rit->second;
-            }
-            auto itNext = std::next(it2); // Check for equal to, if equal inc iterator
-            if ( (itNext != m_map.end()) && (itNext->first == keyEnd) ) {
-                std::cout << "HERE " << __LINE__ << std::endl;
-                it2 = itNext;
-            }
-            std::cout << "HERE " << __LINE__ << std::endl;
+        // Finds insertion point, one past value
+        auto itEnd = m_map.upper_bound(keyEnd);
+        if (itEnd != m_map.end()) {
+            itEnd = std::prev(itEnd);
         } else {
-            std::cout << "HERE " << __LINE__ << std::endl;
-            // Nothing found set to keyBegin iterator
-            it2 = itBegin;
+            itEnd = std::next(m_map.rbegin()).base();// Last value
         }
-        std::cout << "itBegin=" << itBegin->first << " it2=" << it2->first << " valPrev=" << valPrev << std::endl;
-        assert(it2 != m_map.end() && "it2 must have value");
-        if (it2->first == keyEnd) {
-            if (it2->second == val) {
-                ++it2;
-            }
-        } else {
-            std::cout << "HERE " << __LINE__ << std::endl;
-            if (val != valPrev) {
-                it2 = m_map.insert(++it2,std::make_pair(keyEnd,valPrev));
+        if (itEnd != m_map.begin()) { // Not first item, (i.e. not 0) set previous
+            if (itEnd->first == keyEnd) {
+                valPrev = std::prev(itEnd)->second;
+            } else if (itEnd->first != keyBegin) {
+                // Not set by keyBegin
+                valPrev = itEnd->second;
             } else {
-                ++it2;
+                // Do nothing, use valPrev set by keyBegin
             }
         }
-        m_map.erase(std::next(itBegin), it2);
+
+        // std::cout << "itBegin=" << itBegin->first << " itEnd=" << itEnd->first << " valPrev=" << valPrev << std::endl;
+        assert(itEnd != m_map.end() && "itEnd has valid value");
+        if (itEnd->first == keyEnd) {
+            if (itEnd->second == val) {
+                ++itEnd; // Remove itEnd, if it equal and has same value as val
+            }
+        } else {
+            //std::cout << "HERE " << __LINE__ << std::endl;
+            if (val != valPrev) {
+                itEnd = m_map.insert(++itEnd,std::make_pair(keyEnd,valPrev));
+            } else {
+                ++itEnd;
+            }
+        }
+        m_map.erase(std::next(itBegin), itEnd);
     }
 
     // look-up of the value associated with key
@@ -227,6 +223,21 @@ void IntervalMapTest() {
     im5.assign(4,8,'C');
     im5.assign(0,8,'A');
     std::cout << "im5:\n" << im5.to_string() << std::endl;
+    Map res08 { {0,'A'} };
+    assert(im5 == res08);
 
+    interval_map<unsigned int, char> im6('A');
+    im6.assign(3,8,'B');
+    im6.assign(3,5,'C');
+    std::cout << "im6:\n" << im6.to_string() << std::endl;
+    Map res09 { {0,'A'}, {3,'C'}, {5,'B'}, {8,'A'} };
+    assert(im6 == res09);
+
+    interval_map<unsigned int, char> im7('A');
+    im7.assign(3,5,'B');
+    im7.assign(3,8,'C');
+    std::cout << "im7:\n" << im7.to_string() << std::endl;
+    Map res10 { {0,'A'}, {3,'C'}, {8,'A'} };
+    assert(im7 == res10);
 
 }
