@@ -51,7 +51,7 @@ public:
         }
         assert(!m_map.empty() && "map empty");
         
-        // Find less than keyBegin
+        // Find less or equal to than keyBegin
         auto itBegin = m_map.lower_bound(keyBegin); //GTE
         bool haveEqual = itBegin != m_map.end() && itBegin->first == keyBegin;
         // Find previous
@@ -88,8 +88,8 @@ public:
         assert(itBegin->first <= keyBegin && "Must be less than or equal keyBegin");
         assert(itBegin->second == val && "Added first val");
 
-        // Finds insertion point, one past value
-        auto itEnd = m_map.upper_bound(keyEnd);
+        // Find keyEnd
+        auto itEnd = m_map.upper_bound(keyEnd); // Finds insertion point, one past value
         if (itEnd != m_map.end()) {
             itEnd = std::prev(itEnd);
         } else {
