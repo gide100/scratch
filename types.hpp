@@ -1,7 +1,6 @@
 #ifndef AN_TYPES_HPP
 #define AN_TYPES_HPP
 
-
 #include <string>
 #include <sstream>
 #include <cstdint>
@@ -65,6 +64,7 @@ typedef std::string transport_msg_t ;
 
 // Market Data
 struct market_data_t {
+    sequence_t      seq; // Id
     location_t      origin;
     symbol_t        symbol;
     bool            have_bid;
