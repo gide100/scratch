@@ -989,7 +989,7 @@ BOOST_AUTO_TEST_SUITE(courier)
         BOOST_CHECK(cs.trade_report_msgs     == 1);
 
         an::market_data_t quote{
-            .origin=an::ME, .symbol="APPL",
+            .seq=1, .origin=an::ME, .symbol="APPL",
             .have_bid=true, .bid=100.0, .bid_size=100,
             .have_ask=true, .ask=101.0, .ask_size=10,
             .have_last_trade=true, .last_trade_price=100.10, .last_trade_shares=50,
