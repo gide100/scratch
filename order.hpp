@@ -42,20 +42,28 @@ struct amend_t {
 
 class MatchingEngine ;
 struct SideRecord ;
-struct InputResult;
+class Result;
+class InputResult;
+class MarketDataResult;
 struct AuthorImpl;
 class Message;
+class MarketData;
 
 // Author reads/creates messages
 struct Author { // : private boost::noncopyable {
+    friend Result;
     public:
         Author();
         ~Author();
 
         Message* makeOrder(const std::string& input);
+        MarketData* makeMarketData(const std::string& input);
+        void setMarketData(market_data_t& md, const std::string& input);
     protected:
-        void parse(InputResult& res, const std::string& input);
-        Message* create(const InputResult& res);
+        //void parse(Result& res, const std::string& input);
+        Message* create(const Result& res);
+        Message* createOrder(const InputResult& res) const;
+        MarketData* createMarketData(const MarketDataResult& res) const;
     private:
         std::unique_ptr<AuthorImpl> impl_;
 };
@@ -248,10 +256,11 @@ class TradeReport : public Reply {
 class MarketData : public Reply {
     public:
         explicit MarketData(location_t origin, const market_data_t& md )
-            : Reply(origin, ""), md_(md) {
+            : Reply(origin, "<all>"), md_(md) {
         }
 
         virtual std::string to_string() const;
+        void setMD(const market_data_t& md) { md_ = md; }
         virtual ~MarketData();
     protected:
         market_data_t md_;
