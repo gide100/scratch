@@ -43,11 +43,14 @@ struct amend_t {
 class MatchingEngine ;
 struct SideRecord ;
 class Result;
-class InputResult;
+class OrderResult;
 class MarketDataResult;
+class LoginResult;
 struct AuthorImpl;
 class Message;
+class Order;
 class MarketData;
+class Login;
 
 // Author reads/creates messages
 struct Author { // : private boost::noncopyable {
@@ -56,14 +59,16 @@ struct Author { // : private boost::noncopyable {
         Author();
         ~Author();
 
-        Message* makeOrder(const std::string& input);
+        Order* makeOrder(const std::string& input);
         MarketData* makeMarketData(const std::string& input);
+        Login* makeLogin(const std::string& input);
         void setMarketData(market_data_t& md, const std::string& input);
     protected:
         //void parse(Result& res, const std::string& input);
         Message* create(const Result& res);
-        Message* createOrder(const InputResult& res) const;
+        Order* createOrder(const OrderResult& res) const;
         MarketData* createMarketData(const MarketDataResult& res) const;
+        Login* createLogin(const LoginResult& res) const;
     private:
         std::unique_ptr<AuthorImpl> impl_;
 };

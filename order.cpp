@@ -298,18 +298,21 @@ class an::Result {
         TagFlags         myFlags;
         PString          myType;
     protected:
-        Message* createOrder(Author& a, const InputResult& res) const {
+        Order* createOrder(Author& a, const OrderResult& res) const {
             return a.createOrder(res);
         }
-        MarketData* createMarketData(Author& a,  const MarketDataResult& res) const {
+        MarketData* createMarketData(Author& a, const MarketDataResult& res) const {
             return a.createMarketData(res);
+        }
+        Login* createLogin(Author& a, const LoginResult& res) const {
+            return a.createLogin(res);
         }
 
 };
 
-class an::InputResult : public an::Result {
+class an::OrderResult : public an::Result {
     public:
-        InputResult() : myId(0), myOrigin(), myDestination(), mySymbol(),
+        OrderResult() : myId(0), myOrigin(), myDestination(), mySymbol(),
                         myDirection(an::BUY), myPrice(0.0), myShares(0) { }
 
         virtual an::Message* dispatch(an::Author& a) const {
@@ -362,6 +365,23 @@ class an::MarketDataResult : public an::Result {
         volume_t            myVolume;
 };
 
+class an::LoginResult : public an::Result {
+    public:
+        LoginResult() : 
+            myOrigin(), myDestination()
+            { }
+        virtual an::Login* dispatch(an::Author& a) const {
+            return createLogin(a,*this);
+        }
+        virtual void reset() {
+            Result::reset();
+        }
+    public:
+        location_t          myOrigin;
+        location_t          myDestination;
+};
+
+
 void toMd(an::market_data_t& md, const an::MarketDataResult& res) {
     md.seq = res.mySeq;
     md.origin = res.myOrigin;
@@ -396,8 +416,8 @@ void toMd(an::market_data_t& md, const an::MarketDataResult& res) {
 struct Creator {
     explicit Creator(const PString name) : name_(name) { }
 
-    an::Message* operator()(const an::InputResult& res) const {
-        an::Message* myOrder = nullptr;
+    an::Order* operator()(const an::OrderResult& res) const {
+        an::Order* myOrder = nullptr;
         if (res.myType == PString("LIMIT")) {
             an::LimitOrder*  o = new an::LimitOrder(res.myId, res.myOrigin, res.myDestination, res.mySymbol, res.myDirection, res.myShares, res.myPrice);
             myOrder = o;
@@ -417,9 +437,6 @@ struct Creator {
                 throw an::OrderError("Invalid amend (none given)");
             }
             myOrder = o;
-        } else if (res.myType == PString("LOGIN")) {
-            an::Login* o = new an::Login(res.myOrigin, res.myDestination);
-            myOrder = o;
         } else {
             std::stringstream ss;
             ss << "Invalid order type [" << res.myType.to_string() << "]";
@@ -435,6 +452,14 @@ struct Creator {
             myMsg = new an::MarketData(res.myOrigin, md);
         }
         return myMsg;
+    }
+    an::Login* operator()(const an::LoginResult& res) const {
+        an::Login* myLogin = nullptr;
+        if (res.myType == PString("LOGIN")) {
+            an::Login* o = new an::Login(res.myOrigin, res.myDestination);
+            myLogin = o;
+        }
+        return myLogin;
     }
     const PString name_;
 };
@@ -460,51 +485,49 @@ static constexpr TagFlags STD_FLAGS = TagFlags { (1 << ord(Tag::Type))   | (1 <<
 struct an::AuthorImpl {
     AuthorImpl() : 
         orderFields_{
-            { PString("type"),         Reader(PString("type"),        Tag::Type,        &in_.myType) }
-           ,{ PString("id"),           Reader(PString("id"),          Tag::Id,          &in_.myId,
+            { PString("type"),         Reader(PString("type"),        Tag::Type,        &orderRes_.myType) }
+           ,{ PString("id"),           Reader(PString("id"),          Tag::Id,          &orderRes_.myId,
                                                       nullptr,        convert_t::NATURAL_UINTEGER ) }
-           ,{ PString("origin"),       Reader(PString("origin"),      Tag::Origin,      &in_.myOrigin,
+           ,{ PString("origin"),       Reader(PString("origin"),      Tag::Origin,      &orderRes_.myOrigin,
                                                       nullptr,        convert_t::STRING ) }
-           ,{ PString("destination"),  Reader(PString("destination"), Tag::Destination, &in_.myDestination,
+           ,{ PString("destination"),  Reader(PString("destination"), Tag::Destination, &orderRes_.myDestination,
                                                       nullptr,        convert_t::STRING ) }
-           ,{ PString("symbol"),       Reader(PString("symbol"),      Tag::Symbol,      &in_.mySymbol) }
-           ,{ PString("direction"),    Reader(PString("direction"),   Tag::Direction,   &in_.myDirection) }
-           ,{ PString("price"),        Reader(PString("price"),       Tag::Price,       &in_.myPrice) }
-           ,{ PString("shares"),       Reader(PString("shares"),      Tag::Shares,      &in_.myShares,
+           ,{ PString("symbol"),       Reader(PString("symbol"),      Tag::Symbol,      &orderRes_.mySymbol) }
+           ,{ PString("direction"),    Reader(PString("direction"),   Tag::Direction,   &orderRes_.myDirection) }
+           ,{ PString("price"),        Reader(PString("price"),       Tag::Price,       &orderRes_.myPrice) }
+           ,{ PString("shares"),       Reader(PString("shares"),      Tag::Shares,      &orderRes_.myShares,
                                                       nullptr,        convert_t::NATURAL_INTEGER ) }
         }, orderType_{
             { PString("LIMIT"),
-              TagHandler{ .create = Creator(PString("LIMIT")),
-                .flags = TagFlags( STD_FLAGS | TagFlags((1 << ord(Tag::Symbol)) | (1 << ord(Tag::Direction)) 
-                                                      | (1 << ord(Tag::Shares)) | (1 << ord(Tag::Price))) ),
-                .select = TagFlags(0),
+              TagHandler{ 
+                .create   = Creator(PString("LIMIT")),
+                .flags    = TagFlags( STD_FLAGS | TagFlags((1 << ord(Tag::Symbol)) | (1 << ord(Tag::Direction)) 
+                                                | (1 << ord(Tag::Shares)) | (1 << ord(Tag::Price))) ),
+                .select   = TagFlags(0),
                 .optional = {} } 
             },
             { PString("MARKET"),
-              TagHandler{ .create = Creator(PString("MARKET")),
-                .flags = TagFlags( STD_FLAGS | TagFlags((1 << ord(Tag::Symbol)) | (1 << ord(Tag::Direction)) | (1 << ord(Tag::Shares)) ) ),
-                .select = TagFlags(0),
+              TagHandler{ 
+                .create   = Creator(PString("MARKET")),
+                .flags    = TagFlags( STD_FLAGS | TagFlags((1 << ord(Tag::Symbol)) | (1 << ord(Tag::Direction)) | (1 << ord(Tag::Shares)) ) ),
+                .select   = TagFlags(0),
                 .optional = {} } 
             },
             { PString("CANCEL"),
-              TagHandler{ .create = Creator(PString("CANCEL")),
-                .flags = TagFlags( STD_FLAGS | TagFlags(1 << ord(Tag::Symbol)) ),
-                .select = TagFlags(0),
+              TagHandler{ 
+                .create   = Creator(PString("CANCEL")),
+                .flags    = TagFlags( STD_FLAGS | TagFlags(1 << ord(Tag::Symbol)) ),
+                .select   = TagFlags(0),
                 .optional = {} } 
             },
             { PString("AMEND"),
-              TagHandler{ .create = Creator(PString("AMEND")),
-                .flags = TagFlags( STD_FLAGS | TagFlags(1 << ord(Tag::Symbol)) ),
-                .select = TagFlags( (1 << ord(Tag::Shares)) | (1 << ord(Tag::Price)) ),
-                .optional = {} } 
-            },
-            { PString("LOGIN"), 
-              TagHandler{ .create = Creator(PString("LOGIN")),
-                .flags = TagFlags( (1 << ord(Tag::Type)) | (1 << ord(Tag::Origin)) | (1 << ord(Tag::Destination)) ),
-                .select = TagFlags(0),
+              TagHandler{ 
+                .create   = Creator(PString("AMEND")),
+                .flags    = TagFlags( STD_FLAGS | TagFlags(1 << ord(Tag::Symbol)) ),
+                .select   = TagFlags( (1 << ord(Tag::Shares)) | (1 << ord(Tag::Price)) ),
                 .optional = {} } 
             }
-        }, in_(),
+        }, orderRes_(),
         //type=MARKETDATA:seq=1:origin=ME:destination=<all>:symbol=MSFT:bid=100.0:bid_size=100:ask=101.0:ask_size=10:last_trade_price=100.1:last_trade_shares=50:trade_time=2018-01-01 12.00.00.00000:quote_time=2018-01-01 12.01.00.00000:volume=5005.0
         marketDataFields_ {
             { PString("type"),         Reader(PString("type"),        Tag::Type,        &mdRes_.myType) }
@@ -535,17 +558,18 @@ struct an::AuthorImpl {
                                                       nullptr,        convert_t::FLOAT) }
         }, marketDataType_ {
             { PString("MARKETDATA"),
-              TagHandler{ .create = Creator(PString("MARKETDATA")),
-                .flags = TagFlags( (1 << ord(Tag::Type))   | (1 << ord(Tag::Id)) | 
-                                   (1 << ord(Tag::Origin)) | (1 << ord(Tag::Destination)) |
-                                   (1 << ord(Tag::Symbol)) | 
-                                   (1 << ord(Tag::Bid))    | (1 << ord(Tag::BidSize)) |
-                                   (1 << ord(Tag::Ask))    | (1 << ord(Tag::AskSize)) |
-                                   (1 << ord(Tag::LastTradePrice))    | (1 << ord(Tag::LastTradeShares)) |
-                                   (1 << ord(Tag::TradeTime))    | (1 << ord(Tag::QuoteTime)) |
-                                   (1 << ord(Tag::Volume))
+              TagHandler{ 
+                .create  = Creator(PString("MARKETDATA")),
+                .flags   = TagFlags( (1 << ord(Tag::Type))          | (1 << ord(Tag::Id)) | 
+                                     (1 << ord(Tag::Origin))        | (1 << ord(Tag::Destination)) |
+                                     (1 << ord(Tag::Symbol))        | 
+                                     (1 << ord(Tag::Bid))           | (1 << ord(Tag::BidSize)) |
+                                     (1 << ord(Tag::Ask))           | (1 << ord(Tag::AskSize)) |
+                                     (1 << ord(Tag::LastTradePrice))| (1 << ord(Tag::LastTradeShares)) |
+                                     (1 << ord(Tag::TradeTime))     | (1 << ord(Tag::QuoteTime)) |
+                                     (1 << ord(Tag::Volume))
                                  ),
-                .select = TagFlags(1 << ord(Tag::Destination)),
+                .select   = TagFlags(1 << ord(Tag::Destination)),
                 .optional = { 
                                 TagFlags( (1 << ord(Tag::Bid)) | (1 << ord(Tag::BidSize)) )  
                                ,TagFlags( (1 << ord(Tag::Ask)) | (1 << ord(Tag::AskSize)) )  
@@ -554,18 +578,38 @@ struct an::AuthorImpl {
                             } 
                        }
             },
-        }, mdRes_() { 
+        }, mdRes_(),
+        loginFields_ {
+            { PString("type"),         Reader(PString("type"),        Tag::Type,        &loginRes_.myType) }
+           ,{ PString("origin"),       Reader(PString("origin"),      Tag::Origin,      &loginRes_.myOrigin,
+                                                      nullptr,        convert_t::STRING ) }
+           ,{ PString("destination"),  Reader(PString("destination"), Tag::Destination, &loginRes_.myDestination,
+                                                      nullptr,        convert_t::STRING ) }
+        }, loginType_ {
+            { PString("LOGIN"),
+              TagHandler{ 
+                .create   = Creator(PString("LOGIN")),
+                .flags    = TagFlags(  (1 << ord(Tag::Type)) | (1 << ord(Tag::Origin)) | (1 << ord(Tag::Destination)) ),
+                .select   = TagFlags(0),
+                .optional = {}
+              }
+            }
+        }, loginRes_() { 
     }
     void parse(Result& res, const std::string& input, const std::unordered_map<PString,Reader>& inputFields);
 
     // Messages
     std::unordered_map<PString,Reader> orderFields_;
     NamedTagHandler orderType_;
-    InputResult in_;
+    OrderResult orderRes_;
     // MarketData
     std::unordered_map<PString,Reader> marketDataFields_;
     NamedTagHandler marketDataType_;
     MarketDataResult mdRes_;
+    // Login
+    std::unordered_map<PString,Reader> loginFields_;
+    NamedTagHandler loginType_;
+    LoginResult loginRes_;
 };
 
 an::Author::Author() : impl_(new an::AuthorImpl)  {
@@ -679,18 +723,17 @@ TagHandler& validate(NamedTagHandler& tagHandler, const an::Result& res) {
     return th;
 }
 
-an::Message* an::Author::createOrder(const an::InputResult& res) const {
+an::Order* an::Author::createOrder(const an::OrderResult& res) const {
     TagHandler& th = validate(impl_->orderType_, res);
-//    NamedTagHandler& tagHandler = impl_->orderType_;
-//    validateNamedTagHandler(tagHandler);
-//    auto found = findHandler(tagHandler, an::PString(res.myType), res.myFlags[ord(Tag::Type)]);
-//    validateCoreFlags(found->second.flags, found->second.select, res.myFlags);
-//    validateSelectable(found->second.select, res.myFlags);
-
-    Message* messagePtr = th.create(res);
-    return messagePtr;
+    Order* orderPtr = th.create(res);
+    return orderPtr;
 }
 
+an::Login* an::Author::createLogin(const an::LoginResult& res) const {
+    TagHandler& th = validate(impl_->loginType_, res);
+    Login* loginPtr = th.create(res);
+    return loginPtr;
+}
 
 an::MarketData* an::Author::createMarketData(const an::MarketDataResult& res) const {
     TagHandler& th = validate(impl_->marketDataType_, res);
@@ -699,12 +742,17 @@ an::MarketData* an::Author::createMarketData(const an::MarketDataResult& res) co
 }
 
 
-an::Message* an::Author::makeOrder(const std::string& input) {
-    impl_->in_.reset();
-    impl_->parse(impl_->in_, input, impl_->orderFields_); 
-    return create(impl_->in_);
+an::Order* an::Author::makeOrder(const std::string& input) {
+    impl_->orderRes_.reset();
+    impl_->parse(impl_->orderRes_, input, impl_->orderFields_); 
+    return createOrder(impl_->orderRes_);
 }
 
+an::Login* an::Author::makeLogin(const std::string& input) {
+    impl_->loginRes_.reset();
+    impl_->parse(impl_->loginRes_, input, impl_->loginFields_); 
+    return createLogin(impl_->loginRes_);
+}
 
 void an::Author::setMarketData(market_data_t& md, const std::string& input) {
     impl_->mdRes_.reset();

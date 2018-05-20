@@ -34,21 +34,21 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE(make_orders)
     an::Author a;
     BOOST_AUTO_TEST_CASE(limit_order01) {
-        std::unique_ptr<an::Message> o1(a.makeOrder("origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50:type=LIMIT:id=123"));
+        std::unique_ptr<an::Order> o1(a.makeOrder("origin=Client1:destination=ME:symbol=MSFT:direction=BUY:price=92.0:shares=50:type=LIMIT:id=123"));
         BOOST_CHECK_EQUAL(o1->to_string(),"type=LIMIT:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50:price=92.0");
     }
     BOOST_AUTO_TEST_CASE(market_order01) {
-        std::unique_ptr<an::Message> o2(a.makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50"));
+        std::unique_ptr<an::Order> o2(a.makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50"));
         BOOST_CHECK_EQUAL(o2->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
     }
     BOOST_AUTO_TEST_CASE(cancel_order01) {
-        std::unique_ptr<an::Message> o1(a.makeOrder("type=CANCEL:id=123:origin=Client1:destination=ME:symbol=APPL"));
+        std::unique_ptr<an::Order> o1(a.makeOrder("type=CANCEL:id=123:origin=Client1:destination=ME:symbol=APPL"));
         BOOST_CHECK_EQUAL(o1->to_string(),"type=CANCEL:id=123:origin=Client1:destination=ME:symbol=APPL");
     }
     BOOST_AUTO_TEST_CASE(amend_order01) {
-        std::unique_ptr<an::Message> o1(a.makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:price=99.99"));
+        std::unique_ptr<an::Order> o1(a.makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:price=99.99"));
         BOOST_CHECK_EQUAL(o1->to_string(),"type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:price=99.99");
-        std::unique_ptr<an::Message> o2(a.makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:shares=99"));
+        std::unique_ptr<an::Order> o2(a.makeOrder("type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:shares=99"));
         BOOST_CHECK_EQUAL(o2->to_string(),"type=AMEND:id=123:origin=Client1:destination=ME:symbol=APPL:shares=99");
     }
 BOOST_AUTO_TEST_SUITE_END()
@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE(replies)
     an::Author a;
     BOOST_AUTO_TEST_CASE(response_01) {
-        std::unique_ptr<an::Message> o1(a.makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50"));
+        std::unique_ptr<an::Order> o1(a.makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50"));
         BOOST_CHECK_EQUAL(o1->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
         an::Response res1(o1.get(),an::ACK,"OK");
         BOOST_CHECK_EQUAL(res1.to_string(),"type=MARKET:id=123:origin=ME:destination=Client1:symbol=MSFT:direction=BUY:shares=50:response=ACK:text=OK");
@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_SUITE(replies)
         BOOST_CHECK_EQUAL(res2.to_string(),"type=REPLY:origin=FTSE:destination=Client2:response=ERROR:text=Bad stuff");
     }
     BOOST_AUTO_TEST_CASE(trade_report_01) {
-        std::unique_ptr<an::Order> mkt01(static_cast<an::Order*>(a.makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50")));
+        std::unique_ptr<an::Order> mkt01(a.makeOrder("type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50"));
         BOOST_CHECK_EQUAL(mkt01->to_string(),"type=MARKET:id=123:origin=Client1:destination=ME:symbol=MSFT:direction=BUY:shares=50");
         an::TradeReport trr01(mkt01.get(),an::BUY, 50, 100.0);
         BOOST_CHECK_EQUAL(trr01.to_string(),"type=TRADE:origin=ME:destination=Client1:orig_order_id=123:symbol=MSFT:direction=BUY:shares=50:price=100.0");
@@ -149,10 +149,10 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE(make_login)
     an::Author a;
     BOOST_AUTO_TEST_CASE(login_01) {
-        std::unique_ptr<an::Message> o1(a.makeOrder("type=LOGIN:origin=Client1:destination=ME"));
-        BOOST_CHECK_EQUAL(o1->to_string(),"type=LOGIN:origin=Client1:destination=ME");
-        o1->reverse_direction();
-        BOOST_CHECK_EQUAL(o1->to_string(),"type=LOGIN:origin=ME:destination=Client1");
+        std::unique_ptr<an::Login> log01a(a.makeLogin("type=LOGIN:origin=Client1:destination=ME"));
+        BOOST_CHECK_EQUAL(log01a->to_string(),"type=LOGIN:origin=Client1:destination=ME");
+        log01a->reverse_direction();
+        BOOST_CHECK_EQUAL(log01a->to_string(),"type=LOGIN:origin=ME:destination=Client1");
     }
 BOOST_AUTO_TEST_SUITE_END()
 
