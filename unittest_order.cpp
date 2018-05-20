@@ -306,5 +306,8 @@ BOOST_AUTO_TEST_SUITE(make_orders_bad)
         BOOST_CHECK_EXCEPTION( (void) a.makeMarketData(
             "type=MARKETDATA:seq=123:origin=ME:destination=<all>:symbol=MSFT:last_trade_price=100.0:quote_time=2018-01-01 12.01.00.00000:volume=0.0"),
             an::OrderError, CheckMessage("Invalid flags +LastTradeShares, +TradeTime") );
+        BOOST_CHECK_EXCEPTION( (void) a.makeMarketData(
+            "type=MARKETDATA:seq=123:origin=ME:destination=<all>:symbol=MSFT:ask=100.0:bid=100.0:quote_time=2018-01-01 12.01.00.00000:volume=0.0"), //ask_size bid_zie
+            an::OrderError, CheckMessage("Invalid flags +BidSize") ); // Just BidSize as it is the first group to be checked
     }
 BOOST_AUTO_TEST_SUITE_END()
