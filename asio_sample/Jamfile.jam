@@ -1,0 +1,34 @@
+path-constant TOP : . ;
+path-constant BOOST_INCLUDE_BASE : /usr/local/include ;
+path-constant BOOST_LIB_BASE : /usr/local/lib ;
+
+lib pthread
+   :
+   : <name>pthread <search>/lib
+   ;
+lib boost_chrono
+   :
+   : <name>boost_chrono <search>$(BOOST_LIB_BASE)
+   ;
+lib boost_thread
+   :
+   : <name>boost_thread <search>$(BOOST_LIB_BASE)
+   : : <library>boost_chrono <library>pthread
+   ;
+lib boost_system
+   :
+   : <name>boost_system <search>$(BOOST_LIB_BASE)
+   ;
+
+alias system : boost_system :  ;
+alias thread : boost_thread :  ;
+
+exe asio_sample_timer : asio_sample_timer.cpp system thread ;
+exe asio_sample_timer1 : asio_sample_timer1.cpp system thread ;
+exe asio_sample_timer_with_1_thread_guard : asio_sample_timer_with_1_thread_guard.cpp system thread ;
+exe asio_sample_timer_with_thread : asio_sample_timer_with_thread.cpp system thread ;
+exe asio_sample_timer_with_thread_x2 : asio_sample_timer_with_thread_x2.cpp system thread ;
+exe asio_sample_timer_with_2_thread : asio_sample_timer_with_2_thread.cpp system thread ;
+exe asio_sample_posting : asio_sample_posting.cpp system thread ;
+exe asio_sample_timer_with_2_thread_strand : asio_sample_timer_with_2_thread_strand.cpp system thread ;
+exe asio_sample_timer_with_3_thread_strand : asio_sample_timer_with_3_thread_strand.cpp system thread ;

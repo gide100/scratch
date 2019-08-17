@@ -1,0 +1,33 @@
+# path-constant PROJECT_ROOT : . ;
+path-constant TOP : . ;
+path-constant BOOST_INCLUDE_BASE : /usr/local/include ;
+path-constant BOOST_LIB_BASE : /usr/local/lib ;
+
+# using gcc : : : <cxxflags>"-std=gnu++14 -fdiagnostics-color=always" ; # -Weffc++ -pedantic -Wall -Wextra
+
+lib pthread
+   :
+   : <name>pthread <search>/lib
+   ;
+
+lib boost_chrono
+   :
+   : <name>boost_chrono <search>$(BOOST_LIB_BASE)
+   ;
+
+lib boost_thread
+   :
+   : <name>boost_thread <search>$(BOOST_LIB_BASE)
+   : : <library>boost_chrono <library>pthread
+   ;
+
+lib boost_system
+   :
+   : <name>boost_system <search>$(BOOST_LIB_BASE)
+   ;
+
+alias system : boost_system :  ;
+alias thread : boost_thread :  ;
+
+exe chat_client : chat_client.cpp system thread ;
+exe chat_server : chat_server.cpp system thread ;
