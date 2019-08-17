@@ -1,0 +1,67 @@
+path-constant PROJECT_ROOT : . ;
+path-constant TOP : . ;
+path-constant BOOST_INCLUDE_BASE : /usr/local/include ;
+path-constant BOOST_LIB_BASE : /usr/local/lib ;
+
+using gcc : : : <cxxflags>"-std=gnu++14 -fdiagnostics-color=always" ; # -Weffc++ -pedantic -Wall -Wextra
+
+# <toolset>gcc:<cxxflags>-std=gnu++0x
+# <toolset>clang:<cxxflags>-std=c++11
+
+lib pthread
+   :
+   : <name>pthread <search>/lib
+   ;
+
+lib boost_chrono
+   :
+   : <name>boost_chrono <search>$(BOOST_LIB_BASE)
+   ;
+
+lib boost_thread
+   :
+   : <name>boost_thread <search>$(BOOST_LIB_BASE)
+   : : <library>boost_chrono <library>pthread
+   ;
+
+lib boost_regex
+   :
+   : <name>boost_regex <search>$(BOOST_LIB_BASE)
+   ;
+
+lib boost_system
+   :
+   : <name>boost_system <search>$(BOOST_LIB_BASE)
+   ;
+lib boost_unit_test_framework
+   :
+   : <name>boost_unit_test_framework <search>$(BOOST_LIB_BASE)
+   ;
+
+alias regex : boost_regex : <link>shared <runtime-link>shared ;
+alias system : boost_system :  ;
+alias thread : boost_thread :  ;
+alias unittest : boost_unit_test_framework :  ;
+
+exe example : example.cpp regex system ;
+exe chat_client : chat_client.cpp system thread ;
+exe chat_server : chat_server.cpp system thread ;
+exe asio_sample_timer : asio_sample_timer.cpp system thread ;
+exe asio_sample_timer1 : asio_sample_timer1.cpp system thread ;
+exe asio_sample_timer_with_1_thread_guard : asio_sample_timer_with_1_thread_guard.cpp system thread ;
+exe asio_sample_timer_with_thread : asio_sample_timer_with_thread.cpp system thread ;
+exe asio_sample_timer_with_thread_x2 : asio_sample_timer_with_thread_x2.cpp system thread ;
+exe asio_sample_timer_with_2_thread : asio_sample_timer_with_2_thread.cpp system thread ;
+exe asio_sample_posting : asio_sample_posting.cpp system thread ;
+exe asio_sample_timer_with_2_thread_strand : asio_sample_timer_with_2_thread_strand.cpp system thread ;
+exe asio_sample_timer_with_3_thread_strand : asio_sample_timer_with_3_thread_strand.cpp system thread ;
+exe myshutdown : shutdown.cpp system thread ;
+exe time_test : time_test.cpp system boost_chrono ;
+exe info : info.cpp system thread ;
+exe do_order : do_order.cpp order.cpp security_master.cpp matching_engine.cpp courier.cpp system thread ;
+exe unittest_example : unittest_example.cpp system thread unittest ;
+exe unittest_types : unittest_types.cpp system unittest ;
+exe unittest_order : unittest_order.cpp order.cpp matching_engine.cpp courier.cpp system thread unittest ;
+exe unittest_security : unittest_security.cpp security_master.cpp system thread unittest ;
+exe unittest_matching : unittest_matching.cpp order.cpp security_master.cpp matching_engine.cpp courier.cpp system thread unittest ;
+exe do_transport : do_transport.cpp transport.cpp system thread ;
