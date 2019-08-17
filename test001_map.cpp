@@ -51,7 +51,7 @@ public:
         }
         assert(!m_map.empty() && "map empty");
 
-        // Find less or equal to keyBegin
+        // Find less than or equal to keyBegin
         auto itBegin = m_map.lower_bound(keyBegin); //GTE
         bool haveEqual = itBegin != m_map.end() && itBegin->first == keyBegin;
         // Find previous
