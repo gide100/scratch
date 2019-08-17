@@ -48,7 +48,6 @@ void an::asio_generic_server<ConnectionHandler>::ClientBroadcast::deliver(const 
 }
 
 
-
 void an::client_handler::read_packet() {
     boost::asio::async_read_until(
         socket_,    // From

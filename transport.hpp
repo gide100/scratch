@@ -2,15 +2,11 @@
 #define AN_TRANSPORT_HPP
 
 #include "types.hpp"
-#include <boost/shared_ptr.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/asio.hpp>
 
 // See for changes to interface in 1.66
 // http://www.boost.org/doc/libs/1_66_0/doc/html/boost_asio/net_ts.html
-//
-//
-//
 
 namespace an {
 
@@ -54,7 +50,7 @@ class asio_generic_server {
         }
     private:
         // New connection comes in this is called.
-        void handle_new_connection(shared_handler_t handler, boost::system::error_code const& error);
+        void handle_new_connection(shared_handler_t handler, const boost::system::error_code& error);
 
         // Similar to thread_group, see https://stackoverflow.com/questions/9894263/boostthread-group-in-c11
         int thread_count_;
@@ -155,10 +151,10 @@ class client_handler : public std::enable_shared_from_this<client_handler> {
          }
     private:
         void read_packet();
-        void read_packet_done( boost::system::error_code const& error, std::size_t bytes_transferred ) ;
+        void read_packet_done(const boost::system::error_code& error, std::size_t bytes_transferred) ;
 
         void start_packet_send();
-        void packet_send_done(boost::system::error_code const& error);
+        void packet_send_done(const boost::system::error_code& error);
 
         void queue_message(std::string message) {
             bool write_in_progress = !send_packet_queue_.empty(); // Write in progress, wrapped in strand
