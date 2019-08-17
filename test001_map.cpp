@@ -11,11 +11,11 @@
  *
  * Purpose:
  * To solve problem datailed in test001_map.docx
- * 
+ *
  * Compile:
  * g++ -std=gnu++14 -fdiagnostics-color=always -o test test001_map.cpp && ./test
  *
- * g++ -std=gnu++14 -fdiagnostics-color=always -fprofile-arcs -ftest-coverage -o test test001_map.cpp && ./test 
+ * g++ -std=gnu++14 -fdiagnostics-color=always -fprofile-arcs -ftest-coverage -o test test001_map.cpp && ./test
  * gcov test001_map.cpp
  *
  */
@@ -24,7 +24,7 @@ template<class K, class V>
 
 class interval_map {
     friend void IntervalMapTest();
-    template<typename KEY, typename VALUE> 
+    template<typename KEY, typename VALUE>
     friend bool operator==(const interval_map<KEY,VALUE>& lhs, const std::map<KEY,VALUE>& rhs);
 private:
     std::map<K,V> m_map;
@@ -37,12 +37,12 @@ public:
     }
 
 
-    // Assign value val to interval [keyBegin, keyEnd). 
-    // Overwrite previous values in this interval. 
+    // Assign value val to interval [keyBegin, keyEnd).
+    // Overwrite previous values in this interval.
     // Do not change values outside this interval.
-    // Conforming to the C++ Standard Library conventions, the interval 
+    // Conforming to the C++ Standard Library conventions, the interval
     // includes keyBegin, but excludes keyEnd.
-    // If !( keyBegin < keyEnd ), this designates an empty interval, 
+    // If !( keyBegin < keyEnd ), this designates an empty interval,
     // and assign must do nothing.
     void assign( K const& keyBegin, K const& keyEnd, V const& val ) {
         std::cout << "Assign >=" << keyBegin << " <" << keyEnd << " " << val << std::endl;
@@ -50,8 +50,8 @@ public:
             return;
         }
         assert(!m_map.empty() && "map empty");
-        
-        // Find less or equal to than keyBegin
+
+        // Find less or equal to keyBegin
         auto itBegin = m_map.lower_bound(keyBegin); //GTE
         bool haveEqual = itBegin != m_map.end() && itBegin->first == keyBegin;
         // Find previous
@@ -62,7 +62,7 @@ public:
             itPrev = std::prev(itBegin);
             valPrev = itPrev->second;
         }
-        
+
         if (haveEqual && havePrev) {
             // Previous and Equal, compare... same remove, different replace
             if (val == valPrev) {
