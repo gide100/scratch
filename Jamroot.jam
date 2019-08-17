@@ -43,7 +43,6 @@ alias system : boost_system :  ;
 alias thread : boost_thread :  ;
 alias unittest : boost_unit_test_framework :  ;
 
-exe example : example.cpp regex system ;
 exe myshutdown : shutdown.cpp system thread ;
 exe time_test : time_test.cpp system boost_chrono ;
 exe info : info.cpp system thread ;
